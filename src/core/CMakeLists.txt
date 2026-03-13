@@ -1,0 +1,25 @@
+addModule(cidmolCore
+  allocs.cpp
+  core.cpp
+  cstring.cpp
+  errors.cpp
+  functions.cpp
+  initializerList.cpp
+  map.cpp
+  set.cpp
+  sharedPtr.cpp
+  start.cpp
+  stream.cpp
+  string.cpp
+  stringLiteral.cpp
+  syscalls.cpp
+  traits.cpp
+  types.cpp
+  uniquePtr.cpp
+  variant.cpp
+  vector.cpp
+)
+addSource(cidmolCore
+  start.S
+  main.cpp
+)
