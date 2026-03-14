@@ -51,7 +51,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(Cidmol LANGUAGES CXX ASM)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -march=native \
   -mtune=native -fno-rtti -fno-exceptions -nostdlib -ffreestanding -nostdinc \
-  -fno-lax-vector-conversions -fno-math-errno -fno-trapping-math")
+  -fno-lax-vector-conversions -fno-math-errno -fno-trapping-math -ferror-limit=0")
 
 function(addSource target)
   set(sources "")
