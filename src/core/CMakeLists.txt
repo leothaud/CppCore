@@ -7,6 +7,7 @@ addModule(cidmolCore
   initializerList.cpp
   logicalResult.cpp
   map.cpp
+  pair.cpp
   set.cpp
   sharedPtr.cpp
   start.cpp
