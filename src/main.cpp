@@ -16,10 +16,36 @@
  * the License.
  */
 import core;
+import ast;
+import frontend;
 
 int main(int argc, char **argv) {
-  for (int i = 1; i < argc; ++i) {
-    core::sout << argv[i] << "\n";
+  if (argc != 2) {
+    core::serr << "Usage: " << argv[0] << " [test file].\n";
+    return 1;
   }
+  auto result = compiler::frontend::parseFile(argv[1]);
+  if (result.failed()) {
+    core::serr << result.getMessage() << "\n";
+    return 1;
+  }
+  core::StringStream stream;
+  auto prog = core::move(result.getValue().first);
+  prog->prettyPrint(stream);
+  core::String prettyPrinted = stream.toString();
+  auto result2 = compiler::frontend::parse(prettyPrinted);
+  if (result2.failed()) {
+    core::serr << result2.getMessage() << "\n";
+    return 1;
+  }
+  auto prog2 = core::move(result2.getValue().first);
+  auto comparison = prog->isEqual(*prog2);
+  if (comparison.failed()) {
+    core::serr << comparison.getMessage() << "\n-------------\n";
+    prog->prettyPrint(core::serr) << "\n-------------\n";
+    prog2->prettyPrint(core::serr) << "\n";
+    return 1;
+  }
+  core::sout << "Ok\n";
   return 0;
 }
