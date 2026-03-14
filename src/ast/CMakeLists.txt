@@ -3,6 +3,7 @@ addModule(cidmolAst
   astFwd.cpp
   astModule.cpp
   symbolTable.cpp
+  tokens.cpp
 )
 
 addSource(cidmolAst
