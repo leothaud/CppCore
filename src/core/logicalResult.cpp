@@ -44,6 +44,11 @@ public:
     return message;
   }
 
+  template <typename T> operator LogicalResult<T>() {
+    assert(!result, "LogicalResult conversion are only available on failure.");
+    return LogicalResult<T>::failure(message);
+  }
+
   friend core::FdStream &operator<<(FdStream &stream, LogicalResult result);
 };
 
@@ -52,16 +57,25 @@ export template <typename T> class LogicalResult {
   String message;
   T value;
 
-  LogicalResult(bool result, String message, T value)
+  LogicalResult(bool result, String message, const T &value)
       : result(result), message(message), value(value) {}
 
+  LogicalResult(bool result, String message, T &&value)
+      : result(result), message(message), value(move(value)) {}
+
 public:
-  [[nodiscard]] static LogicalResult<void> success(T value) {
+  [[nodiscard]] static LogicalResult<void> success(const T &value) {
     return LogicalResult<T>(true, "", value);
+  }
+  [[nodiscard]] static LogicalResult<void> success(T &&value) {
+    return LogicalResult<T>(true, "", move(value));
   }
   [[nodiscard]] static LogicalResult<void> failure(core::String message) {
     return LogicalResult<T>(false, message, T{});
   }
+
+  LogicalResult(const T &value) : result(true), message(""), value(value) {}
+  LogicalResult(T &&value) : result(true), message(""), value(move(value)) {}
 
   bool succeed() const { return result; }
   bool failed() const { return !result; }
@@ -72,6 +86,11 @@ public:
   T &getValue() const {
     assert(result, "getValue on failed LogicalResult.\n");
     return value;
+  }
+
+  template <typename T2> operator LogicalResult<T2>() {
+    assert(!result, "LogicalResult conversion are only available on failure.");
+    return LogicalResult<T2>::failure(message);
   }
 
   friend core::FdStream &operator<<(FdStream &stream, LogicalResult result);
