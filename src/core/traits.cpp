@@ -125,4 +125,28 @@ template <> struct IsVoidBase<void> {
 
 export template <typename T> constexpr bool IsVoid = IsVoidBase<T>::value;
 
+export template <u64... Index> struct IndicesSequence {};
+
+template <u64 N, u64... Indices>
+struct IndicesSequenceBuilderBase
+    : IndicesSequenceBuilderBase<N - 1, N - 1, Indices...> {};
+template <u64... I> struct IndicesSequenceBuilderBase<0, I...> {
+  using type = IndicesSequence<I...>;
+};
+
+export template <u64... I>
+using IndicesSequenceBuilder = IndicesSequenceBuilderBase<I...>::type;
+
+template <typename F, typename... ARGS> struct IsCallableBase {
+  template <typename U>
+  static char test(decltype((*((U *)0))(declval<ARGS>()...)) *);
+
+  template <typename> static int test(...);
+
+  static constexpr bool value = sizeof(decltype(test<F>(0))) == sizeof(char);
+};
+
+export template <typename F, typename... ARGS>
+constexpr bool IsCallable = IsCallableBase<F, ARGS...>::value;
+
 } // namespace core
