@@ -3,6 +3,7 @@ addModule(cidmolCore
   builtins.cpp
   core.cpp
   cstring.cpp
+  elf64.cpp
   errors.cpp
   functions.cpp
   initializerList.cpp

@@ -16,6 +16,7 @@ export module core;
 export import :allocs;
 export import :builtins;
 export import :cstring;
+export import :elf64;
 export import :errors;
 export import :functions;
 export import :initializerList;

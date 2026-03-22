@@ -31,6 +31,7 @@ struct [[gnu::aligned(16)]] stackHead {
   void (*fn)(u8 *);
   u8 *arg;
   u8 *stack;
+  TlsHeader *tlsHeader;
 };
 
 [[clang::noinline, clang::no_stack_protector]] void
@@ -38,6 +39,7 @@ threadEntry(stackHead *head) {
   head->fn(head->arg);
   __atomic_store_n(&head->futex, 0, __ATOMIC_SEQ_CST);
   futexWakeAll(&head->futex);
+  delete[] head->tlsHeader->tlsInfo;
   delete[] head->arg;
   delete[] head->stack;
   exit(0);
@@ -50,12 +52,16 @@ struct Thread {
 [[gnu::naked]] long newthread(stackHead *stack) {
 #if defined(linux) and defined(__x86_64__) and __has_extension(gnu_asm)
   __asm__ volatile("mov %%rdi, %%rsi\n"
-                   "mov $0x50f00, %%edi\n"
+                   "mov 40(%%rsi), %%r8\n"
+                   "mov $0xd0f00, %%edi\n"
                    "mov $56, %%eax\n"
+                   "xor %%edx, %%edx\n"
+                   "xor %%r10d, %%r10d\n"
                    "syscall\n"
                    "mov %%rsp, %%rdi\n"
                    "ret\n" ::
-                       : "rax", "rcx", "rsi", "rdi", "r11", "memory");
+                       : "rax", "rcx", "rsi", "rdi", "r8", "r10", "r11",
+                         "memory");
 #else
 #error No alternative for newthread function.
 #endif
@@ -116,11 +122,14 @@ startThread(ARGS... args) {
   u8 *entryPtr = new u8[sizeof(FunEntry<decltype(fn), ARGS...>)];
   FunEntry<decltype(fn), ARGS...> *entry =
       new (entryPtr) FunEntry<decltype(fn), ARGS...>(fn, args...);
+
   head->entry = threadEntry;
   head->futex = 1;
   head->fn = doCall<decltype(fn), ARGS...>;
   head->arg = entryPtr;
   head->stack = stack;
+  head->tlsHeader = allocateTls();
+
   newthread(head);
   return &head->futex;
 }

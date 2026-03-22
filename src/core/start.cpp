@@ -13,10 +13,12 @@
  */
 export module core:start;
 
+import :cstring;
 import :builtins;
 import :syscalls;
 import :allocs;
 import :mutex;
+import :elf64;
 
 namespace core {
 
@@ -29,12 +31,6 @@ extern "C" export [[gnu::no_stack_protector]] void __cxa_pure_virtual() {
 extern "C" export u64 __stack_chk_guard asm("__stack_chk_guard") = 167;
 extern "C" export void __stack_chk_fail(void) asm("__stack_chk_fail");
 extern "C" export void __stack_chk_fail(void) { exit(1); }
-
-export struct TlsHeader {
-  TlsHeader *self;
-  u64 dummy[4];
-  u64 canary;
-};
 
 export enum {
   AT_NULL = 0,
@@ -82,7 +78,20 @@ export struct Elf32Auxv {
 
 export Elf32AuxvValue auxvVals[33]{};
 
-export _Alignas(64) TlsHeader tls;
+export struct TlsInfo {
+  u64 memsz;
+  u64 filesz;
+  u64 vaddr;
+  u64 align;
+};
+export struct TlsHeader {
+  TlsHeader *self;
+  u8 *tlsInfo;
+  u64 dummy[3];
+  u64 canary;
+};
+
+export TlsInfo tlsInfo{};
 
 } // namespace core
 
@@ -126,6 +135,28 @@ extern "C" export [[gnu::no_stack_protector]] void __cxa_finalize(void *dso) {
   }
 }
 
+export TlsHeader *allocateTls() {
+  u64 align = tlsInfo.align > 16 ? tlsInfo.align : 16;
+  u64 size = tlsInfo.memsz + sizeof(TlsHeader);
+  u8 *memory = new u8[size + align];
+
+  u8 *aligned = reinterpret_cast<u8 *>(
+      (reinterpret_cast<u64>(memory) + align - 1) & ~(align - 1));
+
+  if (tlsInfo.memsz > 0) {
+    memcpy(reinterpret_cast<char *>(aligned),
+           reinterpret_cast<const char *>(tlsInfo.vaddr), tlsInfo.filesz);
+    memset(reinterpret_cast<char *>(aligned + tlsInfo.filesz), 0,
+           tlsInfo.memsz - tlsInfo.filesz);
+  }
+
+  TlsHeader *header = reinterpret_cast<TlsHeader *>(aligned + tlsInfo.memsz);
+  header->self = header;
+  header->canary = *reinterpret_cast<u64 *>(auxvVals[AT_RANDOM].aPtr);
+  header->tlsInfo = memory;
+  return header;
+}
+
 extern "C" export [[gnu::no_stack_protector]] int init(int, char **, char **,
                                                        Elf32Auxv *) asm("init");
 
@@ -139,10 +170,27 @@ init(int argc, char **argv, char **envp, Elf32Auxv *auxv) {
     ++auxv;
   }
   __stack_chk_guard = *reinterpret_cast<u64 *>(auxvVals[AT_RANDOM].aPtr);
-  tls.canary = *reinterpret_cast<u64 *>(auxvVals[AT_RANDOM].aPtr);
-  tls.self = &tls;
 
-  i64 archPrctlRes = archPrctl(reinterpret_cast<u64>(&tls));
+  Elf64Phdr *phdrs = static_cast<Elf64Phdr *>(auxvVals[AT_PHDR].aPtr);
+  u64 phnum = auxvVals[AT_PHNUM].aVal;
+  u64 phent = auxvVals[AT_PHENT].aVal;
+
+  for (u64 i = 0; i < phnum; ++i) {
+    auto *ph = reinterpret_cast<Elf64Phdr *>(reinterpret_cast<u8 *>(phdrs) +
+                                             i * phent);
+    if (ph->p_type == PT_TLS) {
+      tlsInfo = TlsInfo{
+          .memsz = ph->p_memsz,
+          .filesz = ph->p_filesz,
+          .vaddr = ph->p_vaddr, // absolute VA — the kernel already mapped it
+          .align = ph->p_align,
+      };
+    }
+  }
+
+  auto *tls = allocateTls();
+
+  i64 archPrctlRes = archPrctl(reinterpret_cast<u64>(tls));
   if (archPrctlRes != 0) {
     write(stderr, "Error initializing tls.\n");
     exit(1);
