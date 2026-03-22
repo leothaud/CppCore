@@ -4,6 +4,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
+option(ENABLE_THREADS "Enable multithreading for the build" ON)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel ..." FORCE)
+endif()
+
 macro(set_alternate_compiler compiler)
   find_program(COMPILER_EXECUTABLE ${compiler})
 
@@ -50,7 +56,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(Cidmol LANGUAGES CXX ASM)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCORE_THREAD -ftls-model=local-exec -Wall -Wextra -Werror -Wno-unused-command-line-argument  -march=native \
+if(ENABLE_THREADS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCORE_THREAD")
+endif(ENABLE_THREADS)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -ftls-model=local-exec -Wall -Wextra -Werror -Wno-unused-command-line-argument  -march=native \
   -mtune=native -fno-rtti -fno-exceptions -nostdlib -ffreestanding -nostdinc \
   -fno-lax-vector-conversions -fno-math-errno -fno-trapping-math -ferror-limit=0")
 
