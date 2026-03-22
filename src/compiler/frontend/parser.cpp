@@ -159,7 +159,7 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
                     core::Vector<ast::tokens::Token>::Iterator end,
                     core::UniquePtr<ast::symbolTable::Table> &table) {
   switch (it->type) {
-  case ast::tokens::ID: {
+  case ast::tokens::TokenType::ID: {
     ast::VarExpression result;
     result.line_start = it->start_line;
     result.column_start = it->start_column;
@@ -176,7 +176,7 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::INT: {
+  case ast::tokens::TokenType::INT: {
     ast::IntExpression result;
     result.line_start = it->start_line;
     result.column_start = it->start_column;
@@ -190,7 +190,7 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::CHAR: {
+  case ast::tokens::TokenType::CHAR: {
     ast::CharExpression result;
     result.line_start = it->start_line;
     result.column_start = it->start_column;
@@ -204,7 +204,7 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::STRING: {
+  case ast::tokens::TokenType::STRING: {
     ast::StringExpression result;
     result.line_start = it->start_line;
     result.column_start = it->start_column;
@@ -218,7 +218,7 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::TRUE: {
+  case ast::tokens::TokenType::TRUE: {
     ast::TrueExpression result;
     result.line_start = it->start_line;
     result.column_start = it->start_column;
@@ -231,7 +231,7 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::FALSE: {
+  case ast::tokens::TokenType::FALSE: {
     ast::FalseExpression result;
     result.line_start = it->start_line;
     result.column_start = it->start_column;
@@ -244,7 +244,7 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::THIS: {
+  case ast::tokens::TokenType::THIS: {
     ast::ThisExpression result;
     result.line_start = it->start_line;
     result.column_start = it->start_column;
@@ -257,7 +257,7 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::OTHER: {
+  case ast::tokens::TokenType::OTHER: {
     ast::OtherExpression result;
     result.line_start = it->start_line;
     result.column_start = it->start_column;
@@ -270,7 +270,7 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::LP: {
+  case ast::tokens::TokenType::LP: {
     if (it + 1 == end) {
       return eofError(it);
     }
@@ -285,8 +285,8 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       return eofError(value->getLineEnd(), value->getColumnEnd());
     }
     auto result = core::move(base.getValue());
-    if (it->type != ast::tokens::RP) {
-      return wrongTokenError<ast::tokens::RP>(it);
+    if (it->type != ast::tokens::TokenType::RP) {
+      return wrongTokenError<ast::tokens::TokenType::RP>(it);
     }
     result->visit([&](auto &&elt) {
       elt.line_start = line_start;
@@ -299,10 +299,12 @@ parseBaseExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   }
 
   default: {
-    return wrongTokenError<ast::tokens::ID, ast::tokens::INT, ast::tokens::CHAR,
-                           ast::tokens::STRING, ast::tokens::TRUE,
-                           ast::tokens::FALSE, ast::tokens::THIS,
-                           ast::tokens::OTHER, ast::tokens::LP>(it);
+    return wrongTokenError<
+        ast::tokens::TokenType::ID, ast::tokens::TokenType::INT,
+        ast::tokens::TokenType::CHAR, ast::tokens::TokenType::STRING,
+        ast::tokens::TokenType::TRUE, ast::tokens::TokenType::FALSE,
+        ast::tokens::TokenType::THIS, ast::tokens::TokenType::OTHER,
+        ast::tokens::TokenType::LP>(it);
   }
   }
 }
@@ -318,7 +320,7 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
 
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::LSB: {
+    case ast::tokens::TokenType::LSB: {
       ast::ArrayExpression result;
       result.line_start = current->getLineStart();
       result.column_start = current->getColumnStart();
@@ -336,8 +338,8 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
         return eofError(value->getLineEnd(), value->getColumnEnd());
       }
       result.index = core::move(index.getValue());
-      if (it->type != ast::tokens::RSB) {
-        return wrongTokenError<ast::tokens::RSB>(it);
+      if (it->type != ast::tokens::TokenType::RSB) {
+        return wrongTokenError<ast::tokens::TokenType::RSB>(it);
       }
       result.line_end = it->end_line;
       result.column_end = it->end_column;
@@ -347,7 +349,7 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::DOT: {
+    case ast::tokens::TokenType::DOT: {
       ast::FieldExpression result;
       result.line_start = current->getLineStart();
       result.column_start = current->getColumnStart();
@@ -357,8 +359,8 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
         return eofError(it);
       }
       ++it;
-      if (it->type != ast::tokens::ID) {
-        return wrongTokenError<ast::tokens::ID>(it);
+      if (it->type != ast::tokens::TokenType::ID) {
+        return wrongTokenError<ast::tokens::TokenType::ID>(it);
       }
       result.name = it->s;
       result.line_end = it->end_line;
@@ -369,7 +371,7 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::ARROW: {
+    case ast::tokens::TokenType::ARROW: {
       ast::PtrFieldExpression result;
       result.line_start = current->getLineStart();
       result.column_start = current->getColumnStart();
@@ -379,8 +381,8 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
         return eofError(it);
       }
       ++it;
-      if (it->type != ast::tokens::ID) {
-        return wrongTokenError<ast::tokens::ID>(it);
+      if (it->type != ast::tokens::TokenType::ID) {
+        return wrongTokenError<ast::tokens::TokenType::ID>(it);
       }
       result.name = it->s;
       result.line_end = it->end_line;
@@ -391,7 +393,7 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::DOUBLE_PLUS: {
+    case ast::tokens::TokenType::DOUBLE_PLUS: {
       ast::PostIncrExpression result;
       result.line_start = current->getLineStart();
       result.column_start = current->getColumnStart();
@@ -405,7 +407,7 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::DOUBLE_MINUS: {
+    case ast::tokens::TokenType::DOUBLE_MINUS: {
       ast::PostDecrExpression result;
       result.line_start = current->getLineStart();
       result.column_start = current->getColumnStart();
@@ -419,7 +421,7 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::LP: {
+    case ast::tokens::TokenType::LP: {
       ast::FunExpression result;
       result.line_start = current->getLineStart();
       result.column_start = current->getColumnStart();
@@ -428,7 +430,7 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       if (it + 1 == end) {
         return eofError(it);
       }
-      bool finished = it->type == ast::tokens::RP;
+      bool finished = it->type == ast::tokens::TokenType::RP;
       while (!finished) {
         auto arg = parseExpression(it, end, table);
         if (arg.failed())
@@ -439,7 +441,7 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
         }
         result.args.pushBack(core::move(arg.getValue()));
         switch (it->type) {
-        case ast::tokens::COMMA: {
+        case ast::tokens::TokenType::COMMA: {
           if (it + 1 == end) {
             return eofError(it);
           }
@@ -447,13 +449,14 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
           break;
         }
 
-        case ast::tokens::RP: {
+        case ast::tokens::TokenType::RP: {
           finished = true;
           break;
         }
 
         default: {
-          return wrongTokenError<ast::tokens::COMMA, ast::tokens::RP>(it);
+          return wrongTokenError<ast::tokens::TokenType::COMMA,
+                                 ast::tokens::TokenType::RP>(it);
         }
         }
       }
@@ -465,7 +468,7 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::CAST: {
+    case ast::tokens::TokenType::CAST: {
       ast::CastExpression result;
       result.line_start = current->getLineStart();
       result.column_start = current->getColumnStart();
@@ -486,7 +489,7 @@ parsePostfixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::BITCAST: {
+    case ast::tokens::TokenType::BITCAST: {
       ast::BitCastExpression result;
       result.line_start = current->getLineStart();
       result.column_start = current->getColumnStart();
@@ -520,7 +523,7 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
                       core::Vector<ast::tokens::Token>::Iterator end,
                       core::UniquePtr<ast::symbolTable::Table> &table) {
   switch (it->type) {
-  case ast::tokens::DOUBLE_PLUS: {
+  case ast::tokens::TokenType::DOUBLE_PLUS: {
     if (it + 1 == end) {
       return eofError(it);
     }
@@ -540,7 +543,7 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::DOUBLE_MINUS: {
+  case ast::tokens::TokenType::DOUBLE_MINUS: {
     if (it + 1 == end) {
       return eofError(it);
     }
@@ -560,7 +563,7 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::STAR: {
+  case ast::tokens::TokenType::STAR: {
     if (it + 1 == end) {
       return eofError(it);
     }
@@ -580,7 +583,7 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::SYSCALL: {
+  case ast::tokens::TokenType::SYSCALL: {
     ast::SyscallExpression result;
     result.line_start = it->start_line;
     result.column_start = it->start_column;
@@ -589,8 +592,8 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       return eofError(it);
     }
     ++it;
-    if (it->type != ast::tokens::LP) {
-      return wrongTokenError<ast::tokens::LP>(it);
+    if (it->type != ast::tokens::TokenType::LP) {
+      return wrongTokenError<ast::tokens::TokenType::LP>(it);
     }
     if (it + 1 == end) {
       return eofError(it);
@@ -604,15 +607,15 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     if (code.failed())
       return code;
     result.code = core::move(code.getValue());
-    bool finished = it->type == ast::tokens::RP;
+    bool finished = it->type == ast::tokens::TokenType::RP;
     while (!finished) {
       switch (it->type) {
-      case ast::tokens::RP: {
+      case ast::tokens::TokenType::RP: {
         finished = true;
         break;
       }
 
-      case ast::tokens::COMMA: {
+      case ast::tokens::TokenType::COMMA: {
         if (it + 1 == end) {
           return eofError(it);
         }
@@ -629,7 +632,8 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       }
 
       default: {
-        return wrongTokenError<ast::tokens::RP, ast::tokens::COMMA>(it);
+        return wrongTokenError<ast::tokens::TokenType::RP,
+                               ast::tokens::TokenType::COMMA>(it);
       }
       }
     }
@@ -641,7 +645,7 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::SIZEOF: {
+  case ast::tokens::TokenType::SIZEOF: {
     ast::SizeofExpression result;
     result.line_start = it->start_line;
     result.column_start = it->start_column;
@@ -651,8 +655,8 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       return eofError(it);
     }
     ++it;
-    if (it->type != ast::tokens::LP) {
-      return wrongTokenError<ast::tokens::LP>(it);
+    if (it->type != ast::tokens::TokenType::LP) {
+      return wrongTokenError<ast::tokens::TokenType::LP>(it);
     }
     if (it + 1 == end) {
       return eofError(it);
@@ -666,8 +670,8 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       return eofError(value->getLineEnd(), value->getColumnEnd());
     }
     result.arg = core::move(t.getValue());
-    if (it->type != ast::tokens::RP) {
-      return wrongTokenError<ast::tokens::RP>(it);
+    if (it->type != ast::tokens::TokenType::RP) {
+      return wrongTokenError<ast::tokens::TokenType::RP>(it);
     }
     result.line_end = it->end_line;
     result.column_end = it->end_column;
@@ -677,7 +681,7 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::EXCLAMATION: {
+  case ast::tokens::TokenType::EXCLAMATION: {
     if (it + 1 == end) {
       return eofError(it);
     }
@@ -697,7 +701,7 @@ parsePrefixExpression(core::Vector<ast::tokens::Token>::Iterator &it,
     return resExpr;
   }
 
-  case ast::tokens::TILDE: {
+  case ast::tokens::TokenType::TILDE: {
     if (it + 1 == end) {
       return eofError(it);
     }
@@ -733,7 +737,7 @@ parseMulExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::STAR: {
+    case ast::tokens::TokenType::STAR: {
       auto newCurrent =
           parseBinexprAux<ast::MulExpression, parsePrefixExpression>(
               it, end, table, core::move(current));
@@ -743,7 +747,7 @@ parseMulExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::SLASH: {
+    case ast::tokens::TokenType::SLASH: {
       auto newCurrent =
           parseBinexprAux<ast::DivExpression, parsePrefixExpression>(
               it, end, table, core::move(current));
@@ -753,7 +757,7 @@ parseMulExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::PERCENT: {
+    case ast::tokens::TokenType::PERCENT: {
       auto newCurrent =
           parseBinexprAux<ast::ModExpression, parsePrefixExpression>(
               it, end, table, core::move(current));
@@ -781,7 +785,7 @@ parseAddExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::PLUS: {
+    case ast::tokens::TokenType::PLUS: {
       auto newCurrent = parseBinexprAux<ast::AddExpression, parseMulExpression>(
           it, end, table, core::move(current));
       if (newCurrent.failed())
@@ -790,7 +794,7 @@ parseAddExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::MINUS: {
+    case ast::tokens::TokenType::MINUS: {
       auto newCurrent = parseBinexprAux<ast::SubExpression, parseMulExpression>(
           it, end, table, core::move(current));
       if (newCurrent.failed())
@@ -817,7 +821,7 @@ parseShiftExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::DOUBLE_LAB: {
+    case ast::tokens::TokenType::DOUBLE_LAB: {
       auto newCurrent =
           parseBinexprAux<ast::LshiftExpression, parseAddExpression>(
               it, end, table, core::move(current));
@@ -827,7 +831,7 @@ parseShiftExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::DOUBLE_RAB: {
+    case ast::tokens::TokenType::DOUBLE_RAB: {
       auto newCurrent =
           parseBinexprAux<ast::RshiftExpression, parseAddExpression>(
               it, end, table, core::move(current));
@@ -855,7 +859,7 @@ parseComparisonExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::LAB: {
+    case ast::tokens::TokenType::LAB: {
       auto newCurrent =
           parseBinexprAux<ast::LtExpression, parseShiftExpression>(
               it, end, table, core::move(current));
@@ -865,7 +869,7 @@ parseComparisonExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::LAB_EQUAL: {
+    case ast::tokens::TokenType::LAB_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::LeExpression, parseShiftExpression>(
               it, end, table, core::move(current));
@@ -874,7 +878,7 @@ parseComparisonExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::RAB: {
+    case ast::tokens::TokenType::RAB: {
       auto newCurrent =
           parseBinexprAux<ast::GtExpression, parseShiftExpression>(
               it, end, table, core::move(current));
@@ -884,7 +888,7 @@ parseComparisonExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::RAB_EQUAL: {
+    case ast::tokens::TokenType::RAB_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::GeExpression, parseShiftExpression>(
               it, end, table, core::move(current));
@@ -912,7 +916,7 @@ parseEqualityExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::DOUBLE_EQUAL: {
+    case ast::tokens::TokenType::DOUBLE_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::EqExpression, parseComparisonExpression>(
               it, end, table, core::move(current));
@@ -922,7 +926,7 @@ parseEqualityExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::EXCLAMATION_EQUAL: {
+    case ast::tokens::TokenType::EXCLAMATION_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::NeqExpression, parseComparisonExpression>(
               it, end, table, core::move(current));
@@ -950,7 +954,7 @@ parseBandExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::AMPERSAND: {
+    case ast::tokens::TokenType::AMPERSAND: {
       auto newCurrent =
           parseBinexprAux<ast::BandExpression, parseEqualityExpression>(
               it, end, table, core::move(current));
@@ -978,7 +982,7 @@ parseBxorExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::WEDGE: {
+    case ast::tokens::TokenType::WEDGE: {
       auto newCurrent =
           parseBinexprAux<ast::BxorExpression, parseBandExpression>(
               it, end, table, core::move(current));
@@ -1006,7 +1010,7 @@ parseBorExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::PIPE: {
+    case ast::tokens::TokenType::PIPE: {
       auto newCurrent =
           parseBinexprAux<ast::BorExpression, parseBxorExpression>(
               it, end, table, core::move(current));
@@ -1034,7 +1038,7 @@ parseLandExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::DOUBLE_AMPERSAND: {
+    case ast::tokens::TokenType::DOUBLE_AMPERSAND: {
       auto newCurrent =
           parseBinexprAux<ast::LandExpression, parseBorExpression>(
               it, end, table, core::move(current));
@@ -1062,7 +1066,7 @@ parseLxorExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::DOUBLE_WEDGE: {
+    case ast::tokens::TokenType::DOUBLE_WEDGE: {
       auto newCurrent =
           parseBinexprAux<ast::LxorExpression, parseLandExpression>(
               it, end, table, core::move(current));
@@ -1090,7 +1094,7 @@ parseLorExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   core::UniquePtr<ast::Expression> current = core::move(base.getValue());
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::DOUBLE_PIPE: {
+    case ast::tokens::TokenType::DOUBLE_PIPE: {
       auto newCurrent =
           parseBinexprAux<ast::LorExpression, parseLxorExpression>(
               it, end, table, core::move(current));
@@ -1115,7 +1119,7 @@ parseTernaryExpression(core::Vector<ast::tokens::Token>::Iterator &it,
   auto cond = parseLorExpression(it, end, table);
   if (cond.failed())
     return cond;
-  if ((it != end) && (it->type == ast::tokens::QUESTION)) {
+  if ((it != end) && (it->type == ast::tokens::TokenType::QUESTION)) {
     auto result = core::UniquePtr<ast::TernaryExpression>::create();
     result->cond = core::move(cond.getValue());
     result->line_start = result->cond->getLineStart();
@@ -1133,8 +1137,8 @@ parseTernaryExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       return eofError(value->getLineEnd(), value->getColumnEnd());
     }
     result->thenPart = core::move(thenPart.getValue());
-    if (it->type != ast::tokens::COLON) {
-      return wrongTokenError<ast::tokens::COLON>(it);
+    if (it->type != ast::tokens::TokenType::COLON) {
+      return wrongTokenError<ast::tokens::TokenType::COLON>(it);
     }
     if (it + 1 == end) {
       return eofError(it);
@@ -1164,7 +1168,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
 
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::EQUAL: {
+    case ast::tokens::TokenType::EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::AffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1173,7 +1177,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::PLUS_EQUAL: {
+    case ast::tokens::TokenType::PLUS_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::AddAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1182,7 +1186,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::MINUS_EQUAL: {
+    case ast::tokens::TokenType::MINUS_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::SubAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1191,7 +1195,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::STAR_EQUAL: {
+    case ast::tokens::TokenType::STAR_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::MulAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1200,7 +1204,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::PERCENT_EQUAL: {
+    case ast::tokens::TokenType::PERCENT_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::ModAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1209,7 +1213,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::SLASH_EQUAL: {
+    case ast::tokens::TokenType::SLASH_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::DivAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1218,7 +1222,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::DOUBLE_AMPERSAND_EQUAL: {
+    case ast::tokens::TokenType::DOUBLE_AMPERSAND_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::LandAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1227,7 +1231,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::DOUBLE_PIPE_EQUAL: {
+    case ast::tokens::TokenType::DOUBLE_PIPE_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::LorAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1236,7 +1240,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::DOUBLE_WEDGE_EQUAL: {
+    case ast::tokens::TokenType::DOUBLE_WEDGE_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::LxorAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1245,7 +1249,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::AMPERSAND_EQUAL: {
+    case ast::tokens::TokenType::AMPERSAND_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::BandAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1254,7 +1258,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::PIPE_EQUAL: {
+    case ast::tokens::TokenType::PIPE_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::BorAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1263,7 +1267,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::WEDGE_EQUAL: {
+    case ast::tokens::TokenType::WEDGE_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::BxorAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1272,7 +1276,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::DOUBLE_LAB_EQUAL: {
+    case ast::tokens::TokenType::DOUBLE_LAB_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::LshiftAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1281,7 +1285,7 @@ parseAssignExpression(core::Vector<ast::tokens::Token>::Iterator &it,
       current = core::move(newCurrent.getValue());
       break;
     }
-    case ast::tokens::DOUBLE_RAB_EQUAL: {
+    case ast::tokens::TokenType::DOUBLE_RAB_EQUAL: {
       auto newCurrent =
           parseBinexprAux<ast::RshiftAffecExpression, parseTernaryExpression>(
               it, end, table, core::move(current));
@@ -1311,7 +1315,7 @@ parseType(core::Vector<ast::tokens::Token>::Iterator &it,
           core::UniquePtr<ast::symbolTable::Table> &table) {
   auto current = core::UniquePtr<ast::Type>::create();
   switch (it->type) {
-  case ast::tokens::VOID: {
+  case ast::tokens::TokenType::VOID: {
     ast::VoidType t;
     t.associatedLevel = table->current;
     t.line_start = it->start_line;
@@ -1323,7 +1327,7 @@ parseType(core::Vector<ast::tokens::Token>::Iterator &it,
     break;
   }
 
-  case ast::tokens::BIT: {
+  case ast::tokens::TokenType::BIT: {
     ast::BitType t;
     t.associatedLevel = table->current;
     t.line_start = it->start_line;
@@ -1335,7 +1339,7 @@ parseType(core::Vector<ast::tokens::Token>::Iterator &it,
     break;
   }
 
-  case ast::tokens::STRUCT: {
+  case ast::tokens::TokenType::STRUCT: {
     ast::StructType t;
     t.associatedLevel = table->current;
     t.line_start = it->start_line;
@@ -1344,8 +1348,8 @@ parseType(core::Vector<ast::tokens::Token>::Iterator &it,
       return eofError(it);
     }
     ++it;
-    if (it->type != ast::tokens::ID) {
-      return wrongTokenError<ast::tokens::ID>(it);
+    if (it->type != ast::tokens::TokenType::ID) {
+      return wrongTokenError<ast::tokens::TokenType::ID>(it);
     }
     t.name = it->s;
     t.line_end = it->end_line;
@@ -1355,7 +1359,7 @@ parseType(core::Vector<ast::tokens::Token>::Iterator &it,
     break;
   }
 
-  case ast::tokens::UNION: {
+  case ast::tokens::TokenType::UNION: {
     ast::UnionType t;
     t.associatedLevel = table->current;
     t.line_start = it->start_line;
@@ -1364,8 +1368,8 @@ parseType(core::Vector<ast::tokens::Token>::Iterator &it,
       return eofError(it);
     }
     ++it;
-    if (it->type != ast::tokens::ID) {
-      return wrongTokenError<ast::tokens::ID>(it);
+    if (it->type != ast::tokens::TokenType::ID) {
+      return wrongTokenError<ast::tokens::TokenType::ID>(it);
     }
     t.name = it->s;
     t.line_end = it->end_line;
@@ -1375,7 +1379,7 @@ parseType(core::Vector<ast::tokens::Token>::Iterator &it,
     break;
   }
 
-  case ast::tokens::ID: {
+  case ast::tokens::TokenType::ID: {
     auto alias = table->getAlias(it->s);
     if (alias.failed())
       return alias;
@@ -1385,14 +1389,15 @@ parseType(core::Vector<ast::tokens::Token>::Iterator &it,
   }
 
   default: {
-    return wrongTokenError<ast::tokens::VOID, ast::tokens::BIT,
-                           ast::tokens::STRUCT, ast::tokens::UNION,
-                           ast::tokens::ID>(it);
+    return wrongTokenError<
+        ast::tokens::TokenType::VOID, ast::tokens::TokenType::BIT,
+        ast::tokens::TokenType::STRUCT, ast::tokens::TokenType::UNION,
+        ast::tokens::TokenType::ID>(it);
   }
   }
   while (it != end) {
     switch (it->type) {
-    case ast::tokens::STAR: {
+    case ast::tokens::TokenType::STAR: {
       auto ptrType = core::UniquePtr<ast::PtrType>::create();
       ptrType->line_start = current->getLineStart();
       ptrType->column_start = current->getColumnStart();
@@ -1406,7 +1411,7 @@ parseType(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::LSB: {
+    case ast::tokens::TokenType::LSB: {
       auto arrayType = core::UniquePtr<ast::ArrayType>::create();
       arrayType->line_start = current->getLineStart();
       arrayType->column_start = current->getColumnStart();
@@ -1425,8 +1430,8 @@ parseType(core::Vector<ast::tokens::Token>::Iterator &it,
         return eofError(value->getLineEnd(), value->getColumnEnd());
       }
       arrayType->size = core::move(size.getValue());
-      if (it->type != ast::tokens::RSB) {
-        return wrongTokenError<ast::tokens::RSB>(it);
+      if (it->type != ast::tokens::TokenType::RSB) {
+        return wrongTokenError<ast::tokens::TokenType::RSB>(it);
       }
       arrayType->line_end = it->end_line;
       arrayType->column_end = it->end_column;
@@ -1448,23 +1453,23 @@ core::LogicalResult<core::UniquePtr<ast::ProgramItem>>
 parseAliasDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
                       core::Vector<ast::tokens::Token>::Iterator end,
                       core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::ALIAS) {
-    return wrongTokenError<ast::tokens::ALIAS>(it);
+  if (it->type != ast::tokens::TokenType::ALIAS) {
+    return wrongTokenError<ast::tokens::TokenType::ALIAS>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::ID) {
-    return wrongTokenError<ast::tokens::ID>(it);
+  if (it->type != ast::tokens::TokenType::ID) {
+    return wrongTokenError<ast::tokens::TokenType::ID>(it);
   }
   core::String name = it->s;
   if (it + 1 == end) {
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::EQUAL) {
-    return wrongTokenError<ast::tokens::EQUAL>(it);
+  if (it->type != ast::tokens::TokenType::EQUAL) {
+    return wrongTokenError<ast::tokens::TokenType::EQUAL>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
@@ -1481,8 +1486,8 @@ core::LogicalResult<core::UniquePtr<ast::OperationDeclaration>>
 parseOperationdeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
                           core::Vector<ast::tokens::Token>::Iterator end,
                           core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::OPERATOR) {
-    return wrongTokenError<ast::tokens::OPERATOR>(it);
+  if (it->type != ast::tokens::TokenType::OPERATOR) {
+    return wrongTokenError<ast::tokens::TokenType::OPERATOR>(it);
   }
   auto result = core::UniquePtr<ast::OperationDeclaration>::create();
   result->line_start = it->start_line;
@@ -1493,72 +1498,74 @@ parseOperationdeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
   }
   ++it;
   switch (it->type) {
-  case ast::tokens::PLUS: {
-    result->opType = ast::OperationDeclaration::ADD_OP;
+  case ast::tokens::TokenType::PLUS: {
+    result->opType = ast::OperationDeclaration::OperatorType::ADD_OP;
     break;
   }
-  case ast::tokens::MINUS: {
-    result->opType = ast::OperationDeclaration::SUB_OP;
+  case ast::tokens::TokenType::MINUS: {
+    result->opType = ast::OperationDeclaration::OperatorType::SUB_OP;
     break;
   }
-  case ast::tokens::STAR: {
-    result->opType = ast::OperationDeclaration::MUL_OP;
+  case ast::tokens::TokenType::STAR: {
+    result->opType = ast::OperationDeclaration::OperatorType::MUL_OP;
     break;
   }
-  case ast::tokens::PERCENT: {
-    result->opType = ast::OperationDeclaration::MOD_OP;
+  case ast::tokens::TokenType::PERCENT: {
+    result->opType = ast::OperationDeclaration::OperatorType::MOD_OP;
     break;
   }
-  case ast::tokens::SLASH: {
-    result->opType = ast::OperationDeclaration::DIV_OP;
+  case ast::tokens::TokenType::SLASH: {
+    result->opType = ast::OperationDeclaration::OperatorType::DIV_OP;
     break;
   }
-  case ast::tokens::DOUBLE_AMPERSAND: {
-    result->opType = ast::OperationDeclaration::LAND_OP;
+  case ast::tokens::TokenType::DOUBLE_AMPERSAND: {
+    result->opType = ast::OperationDeclaration::OperatorType::LAND_OP;
     break;
   }
-  case ast::tokens::DOUBLE_PIPE: {
-    result->opType = ast::OperationDeclaration::LOR_OP;
+  case ast::tokens::TokenType::DOUBLE_PIPE: {
+    result->opType = ast::OperationDeclaration::OperatorType::LOR_OP;
     break;
   }
-  case ast::tokens::DOUBLE_WEDGE: {
-    result->opType = ast::OperationDeclaration::LXOR_OP;
+  case ast::tokens::TokenType::DOUBLE_WEDGE: {
+    result->opType = ast::OperationDeclaration::OperatorType::LXOR_OP;
     break;
   }
-  case ast::tokens::EXCLAMATION: {
-    result->opType = ast::OperationDeclaration::LNOT_OP;
+  case ast::tokens::TokenType::EXCLAMATION: {
+    result->opType = ast::OperationDeclaration::OperatorType::LNOT_OP;
     break;
   }
-  case ast::tokens::DOUBLE_EQUAL: {
-    result->opType = ast::OperationDeclaration::EQ_OP;
+  case ast::tokens::TokenType::DOUBLE_EQUAL: {
+    result->opType = ast::OperationDeclaration::OperatorType::EQ_OP;
     break;
   }
-  case ast::tokens::LAB: {
-    result->opType = ast::OperationDeclaration::LT_OP;
+  case ast::tokens::TokenType::LAB: {
+    result->opType = ast::OperationDeclaration::OperatorType::LT_OP;
     break;
   }
   default: {
     return wrongTokenError<
-        ast::tokens::PLUS, ast::tokens::MINUS, ast::tokens::STAR,
-        ast::tokens::PERCENT, ast::tokens::SLASH, ast::tokens::DOUBLE_AMPERSAND,
-        ast::tokens::DOUBLE_PIPE, ast::tokens::DOUBLE_WEDGE,
-        ast::tokens::EXCLAMATION, ast::tokens::DOUBLE_EQUAL, ast::tokens::LAB>(
-        it);
+        ast::tokens::TokenType::PLUS, ast::tokens::TokenType::MINUS,
+        ast::tokens::TokenType::STAR, ast::tokens::TokenType::PERCENT,
+        ast::tokens::TokenType::SLASH, ast::tokens::TokenType::DOUBLE_AMPERSAND,
+        ast::tokens::TokenType::DOUBLE_PIPE,
+        ast::tokens::TokenType::DOUBLE_WEDGE,
+        ast::tokens::TokenType::EXCLAMATION,
+        ast::tokens::TokenType::DOUBLE_EQUAL, ast::tokens::TokenType::LAB>(it);
   }
   }
   if (it + 1 == end) {
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::LP) {
-    return wrongTokenError<ast::tokens::LP>(it);
+  if (it->type != ast::tokens::TokenType::LP) {
+    return wrongTokenError<ast::tokens::TokenType::LP>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::RP) {
-    return wrongTokenError<ast::tokens::RP>(it);
+  if (it->type != ast::tokens::TokenType::RP) {
+    return wrongTokenError<ast::tokens::TokenType::RP>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
@@ -1577,8 +1584,8 @@ core::LogicalResult<core::UniquePtr<ast::CastDeclaration>>
 parseCastDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
                      core::Vector<ast::tokens::Token>::Iterator end,
                      core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::CAST) {
-    return wrongTokenError<ast::tokens::CAST>(it);
+  if (it->type != ast::tokens::TokenType::CAST) {
+    return wrongTokenError<ast::tokens::TokenType::CAST>(it);
   }
   auto result = core::UniquePtr<ast::CastDeclaration>::create();
   result->line_start = it->start_line;
@@ -1609,8 +1616,8 @@ core::LogicalResult<core::UniquePtr<ast::StructDeclaration>>
 parseStructDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
                        core::Vector<ast::tokens::Token>::Iterator end,
                        core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::STRUCT) {
-    return wrongTokenError<ast::tokens::STRUCT>(it);
+  if (it->type != ast::tokens::TokenType::STRUCT) {
+    return wrongTokenError<ast::tokens::TokenType::STRUCT>(it);
   }
   auto result = core::UniquePtr<ast::StructDeclaration>::create();
   result->line_start = it->start_line;
@@ -1620,25 +1627,25 @@ parseStructDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::ID) {
-    return wrongTokenError<ast::tokens::ID>(it);
+  if (it->type != ast::tokens::TokenType::ID) {
+    return wrongTokenError<ast::tokens::TokenType::ID>(it);
   }
   result->name = it->s;
   if (it + 1 == end) {
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::LB) {
-    return wrongTokenError<ast::tokens::LB>(it);
+  if (it->type != ast::tokens::TokenType::LB) {
+    return wrongTokenError<ast::tokens::TokenType::LB>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
   }
   ++it;
   table->initialize();
-  while (it->type != ast::tokens::RB) {
+  while (it->type != ast::tokens::TokenType::RB) {
     switch (it->type) {
-    case ast::tokens::VAR: {
+    case ast::tokens::TokenType::VAR: {
       auto field = parseVariableDeclaration(it, end, table);
       if (field.failed())
         return field;
@@ -1650,7 +1657,7 @@ parseStructDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::OPERATOR: {
+    case ast::tokens::TokenType::OPERATOR: {
       auto op = parseOperationdeclaration(it, end, table);
       if (op.failed())
         return op;
@@ -1662,7 +1669,7 @@ parseStructDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::FUN: {
+    case ast::tokens::TokenType::FUN: {
       auto method = parseFunctionDeclaration(it, end, table);
       if (method.failed())
         return method;
@@ -1674,7 +1681,7 @@ parseStructDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::CAST: {
+    case ast::tokens::TokenType::CAST: {
       auto cast = parseCastDeclaration(it, end, table);
       if (cast.failed())
         return cast;
@@ -1687,8 +1694,9 @@ parseStructDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
     }
 
     default: {
-      return wrongTokenError<ast::tokens::VAR, ast::tokens::OPERATOR,
-                             ast::tokens::FUN, ast::tokens::CAST>(it);
+      return wrongTokenError<
+          ast::tokens::TokenType::VAR, ast::tokens::TokenType::OPERATOR,
+          ast::tokens::TokenType::FUN, ast::tokens::TokenType::CAST>(it);
     }
     }
   }
@@ -1704,8 +1712,8 @@ core::LogicalResult<core::UniquePtr<ast::UnionDeclaration>>
 parseUnionDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
                       core::Vector<ast::tokens::Token>::Iterator end,
                       core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::UNION) {
-    return wrongTokenError<ast::tokens::UNION>(it);
+  if (it->type != ast::tokens::TokenType::UNION) {
+    return wrongTokenError<ast::tokens::TokenType::UNION>(it);
   }
   auto result = core::UniquePtr<ast::UnionDeclaration>::create();
   result->line_start = it->start_line;
@@ -1716,22 +1724,22 @@ parseUnionDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::ID) {
-    return wrongTokenError<ast::tokens::ID>(it);
+  if (it->type != ast::tokens::TokenType::ID) {
+    return wrongTokenError<ast::tokens::TokenType::ID>(it);
   }
   result->name = it->s;
   if (it + 1 == end) {
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::LB) {
-    return wrongTokenError<ast::tokens::LB>(it);
+  if (it->type != ast::tokens::TokenType::LB) {
+    return wrongTokenError<ast::tokens::TokenType::LB>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
   }
   ++it;
-  bool finished = it->type == ast::tokens::RB;
+  bool finished = it->type == ast::tokens::TokenType::RB;
   while (!finished) {
     auto arg = parseArgument(it, end, table);
     if (arg.failed())
@@ -1742,7 +1750,7 @@ parseUnionDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
     }
     result->fields.pushBack(core::move(arg.getValue()));
     switch (it->type) {
-    case ast::tokens::COMMA: {
+    case ast::tokens::TokenType::COMMA: {
       if (it + 1 == end) {
         return eofError(it);
       }
@@ -1750,13 +1758,14 @@ parseUnionDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::RB: {
+    case ast::tokens::TokenType::RB: {
       finished = true;
       break;
     }
 
     default: {
-      return wrongTokenError<ast::tokens::COMMA, ast::tokens::RB>(it);
+      return wrongTokenError<ast::tokens::TokenType::COMMA,
+                             ast::tokens::TokenType::RB>(it);
     }
     }
   }
@@ -1771,8 +1780,8 @@ core::LogicalResult<core::UniquePtr<ast::WhileStmt>>
 parseWhileStmt(core::Vector<ast::tokens::Token>::Iterator &it,
                core::Vector<ast::tokens::Token>::Iterator end,
                core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::WHILE) {
-    return wrongTokenError<ast::tokens::WHILE>(it);
+  if (it->type != ast::tokens::TokenType::WHILE) {
+    return wrongTokenError<ast::tokens::TokenType::WHILE>(it);
   }
   auto result = core::UniquePtr<ast::WhileStmt>::create();
   result->line_start = it->start_line;
@@ -1782,8 +1791,8 @@ parseWhileStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::LP) {
-    return wrongTokenError<ast::tokens::LP>(it);
+  if (it->type != ast::tokens::TokenType::LP) {
+    return wrongTokenError<ast::tokens::TokenType::LP>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
@@ -1797,8 +1806,8 @@ parseWhileStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(value->getLineEnd(), value->getColumnEnd());
   }
   result->cond = core::move(cond.getValue());
-  if (it->type != ast::tokens::RP) {
-    return wrongTokenError<ast::tokens::RP>(it);
+  if (it->type != ast::tokens::TokenType::RP) {
+    return wrongTokenError<ast::tokens::TokenType::RP>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
@@ -1823,8 +1832,8 @@ core::LogicalResult<core::UniquePtr<ast::DoWhileStmt>>
 parseDoWhileStmt(core::Vector<ast::tokens::Token>::Iterator &it,
                  core::Vector<ast::tokens::Token>::Iterator end,
                  core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::DO) {
-    return wrongTokenError<ast::tokens::DO>(it);
+  if (it->type != ast::tokens::TokenType::DO) {
+    return wrongTokenError<ast::tokens::TokenType::DO>(it);
   }
   auto result = core::UniquePtr<ast::DoWhileStmt>::create();
   result->line_start = it->start_line;
@@ -1844,15 +1853,15 @@ parseDoWhileStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(value->getLineEnd(), value->getColumnEnd());
   }
   result->body = core::move(body.getValue());
-  if (it->type != ast::tokens::WHILE) {
-    return wrongTokenError<ast::tokens::WHILE>(it);
+  if (it->type != ast::tokens::TokenType::WHILE) {
+    return wrongTokenError<ast::tokens::TokenType::WHILE>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::LP) {
-    return wrongTokenError<ast::tokens::LP>(it);
+  if (it->type != ast::tokens::TokenType::LP) {
+    return wrongTokenError<ast::tokens::TokenType::LP>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
@@ -1865,8 +1874,8 @@ parseDoWhileStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     auto &value = cond.getValue();
     return eofError(value->getLineEnd(), value->getColumnEnd());
   }
-  if (it->type != ast::tokens::RP) {
-    return wrongTokenError<ast::tokens::RP>(it);
+  if (it->type != ast::tokens::TokenType::RP) {
+    return wrongTokenError<ast::tokens::TokenType::RP>(it);
   }
   result->cond = core::move(cond.getValue());
   result->line_end = it->end_line;
@@ -1879,8 +1888,8 @@ core::LogicalResult<core::UniquePtr<ast::IfStmt>>
 parseIfStmt(core::Vector<ast::tokens::Token>::Iterator &it,
             core::Vector<ast::tokens::Token>::Iterator end,
             core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::IF) {
-    return wrongTokenError<ast::tokens::IF>(it);
+  if (it->type != ast::tokens::TokenType::IF) {
+    return wrongTokenError<ast::tokens::TokenType::IF>(it);
   }
   auto result = core::UniquePtr<ast::IfStmt>::create();
   result->line_start = it->start_line;
@@ -1890,8 +1899,8 @@ parseIfStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::LP) {
-    return wrongTokenError<ast::tokens::LP>(it);
+  if (it->type != ast::tokens::TokenType::LP) {
+    return wrongTokenError<ast::tokens::TokenType::LP>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
@@ -1905,8 +1914,8 @@ parseIfStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(value->getLineEnd(), value->getColumnEnd());
   }
   result->cond = core::move(cond.getValue());
-  if (it->type != ast::tokens::RP) {
-    return wrongTokenError<ast::tokens::RP>(it);
+  if (it->type != ast::tokens::TokenType::RP) {
+    return wrongTokenError<ast::tokens::TokenType::RP>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
@@ -1918,7 +1927,7 @@ parseIfStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     return thenPart;
   result->thenPart = core::move(thenPart.getValue());
   table->finalize();
-  if ((it != end) && (it->type == ast::tokens::ELSE)) {
+  if ((it != end) && (it->type == ast::tokens::TokenType::ELSE)) {
     if (it + 1 == end) {
       return eofError(it);
     }
@@ -1943,8 +1952,8 @@ core::LogicalResult<core::UniquePtr<ast::SwitchCase>>
 parseSwitchCase(core::Vector<ast::tokens::Token>::Iterator &it,
                 core::Vector<ast::tokens::Token>::Iterator end,
                 core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::CASE) {
-    return wrongTokenError<ast::tokens::CASE>(it);
+  if (it->type != ast::tokens::TokenType::CASE) {
+    return wrongTokenError<ast::tokens::TokenType::CASE>(it);
   }
   auto result = core::UniquePtr<ast::SwitchCase>::create();
   result->line_start = it->start_line;
@@ -1962,8 +1971,8 @@ parseSwitchCase(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(value->getLineEnd(), value->getColumnEnd());
   }
   result->cond = core::move(cond.getValue());
-  if (it->type != ast::tokens::COLON) {
-    return wrongTokenError<ast::tokens::COLON>(it);
+  if (it->type != ast::tokens::TokenType::COLON) {
+    return wrongTokenError<ast::tokens::TokenType::COLON>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
@@ -1980,8 +1989,8 @@ core::LogicalResult<core::UniquePtr<ast::SwitchDefault>>
 parseSwitchDefault(core::Vector<ast::tokens::Token>::Iterator &it,
                    core::Vector<ast::tokens::Token>::Iterator end,
                    core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::DEFAULT) {
-    return wrongTokenError<ast::tokens::DEFAULT>(it);
+  if (it->type != ast::tokens::TokenType::DEFAULT) {
+    return wrongTokenError<ast::tokens::TokenType::DEFAULT>(it);
   }
   auto result = core::UniquePtr<ast::SwitchDefault>::create();
   result->line_start = it->start_line;
@@ -1992,8 +2001,8 @@ parseSwitchDefault(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::COLON) {
-    return wrongTokenError<ast::tokens::COLON>(it);
+  if (it->type != ast::tokens::TokenType::COLON) {
+    return wrongTokenError<ast::tokens::TokenType::COLON>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
@@ -2014,7 +2023,7 @@ parseSwitchItem(core::Vector<ast::tokens::Token>::Iterator &it,
                 core::Vector<ast::tokens::Token>::Iterator end,
                 core::UniquePtr<ast::symbolTable::Table> &table) {
   switch (it->type) {
-  case ast::tokens::CASE: {
+  case ast::tokens::TokenType::CASE: {
     auto res = parseSwitchCase(it, end, table);
     if (res.failed())
       return res;
@@ -2023,7 +2032,7 @@ parseSwitchItem(core::Vector<ast::tokens::Token>::Iterator &it,
     return result;
   }
 
-  case ast::tokens::DEFAULT: {
+  case ast::tokens::TokenType::DEFAULT: {
     auto res = parseSwitchDefault(it, end, table);
     if (res.failed())
       return res;
@@ -2033,7 +2042,8 @@ parseSwitchItem(core::Vector<ast::tokens::Token>::Iterator &it,
   }
 
   default: {
-    return wrongTokenError<ast::tokens::CASE, ast::tokens::DEFAULT>(it);
+    return wrongTokenError<ast::tokens::TokenType::CASE,
+                           ast::tokens::TokenType::DEFAULT>(it);
   }
   }
 }
@@ -2042,8 +2052,8 @@ core::LogicalResult<core::UniquePtr<ast::SwitchStmt>>
 parseSwitchStmt(core::Vector<ast::tokens::Token>::Iterator &it,
                 core::Vector<ast::tokens::Token>::Iterator end,
                 core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::SWITCH) {
-    return wrongTokenError<ast::tokens::SWITCH>(it);
+  if (it->type != ast::tokens::TokenType::SWITCH) {
+    return wrongTokenError<ast::tokens::TokenType::SWITCH>(it);
   }
   auto result = core::UniquePtr<ast::SwitchStmt>::create();
   result->line_start = it->start_line;
@@ -2054,8 +2064,8 @@ parseSwitchStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(it);
   }
   ++it;
-  if (it->type != ast::tokens::LP)
-    return wrongTokenError<ast::tokens::LP>(it);
+  if (it->type != ast::tokens::TokenType::LP)
+    return wrongTokenError<ast::tokens::TokenType::LP>(it);
   if (it + 1 == end) {
     return eofError(it);
   }
@@ -2068,18 +2078,18 @@ parseSwitchStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(value->getLineEnd(), value->getColumnEnd());
   }
   result->cond = core::move(cond.getValue());
-  if (it->type != ast::tokens::RP)
-    return wrongTokenError<ast::tokens::RP>(it);
+  if (it->type != ast::tokens::TokenType::RP)
+    return wrongTokenError<ast::tokens::TokenType::RP>(it);
 
   if (it + 1 == end)
     return eofError(it);
   ++it;
-  if (it->type != ast::tokens::LB)
-    return wrongTokenError<ast::tokens::LB>(it);
+  if (it->type != ast::tokens::TokenType::LB)
+    return wrongTokenError<ast::tokens::TokenType::LB>(it);
   if (it + 1 == end)
     return eofError(it);
   ++it;
-  while (it->type != ast::tokens::RB) {
+  while (it->type != ast::tokens::TokenType::RB) {
     auto item = parseSwitchItem(it, end, table);
     if (item.failed())
       return item;
@@ -2111,8 +2121,8 @@ parseExpressionStmt(core::Vector<ast::tokens::Token>::Iterator &it,
   if (it == end) {
     return eofError(result->value->getLineEnd(), result->value->getColumnEnd());
   }
-  if (it->type != ast::tokens::SEMI) {
-    return wrongTokenError<ast::tokens::SEMI>(it);
+  if (it->type != ast::tokens::TokenType::SEMI) {
+    return wrongTokenError<ast::tokens::TokenType::SEMI>(it);
   }
   result->line_end = it->end_line;
   result->column_end = it->end_column;
@@ -2124,8 +2134,8 @@ core::LogicalResult<core::UniquePtr<ast::ReturnStmt>>
 parseReturnStmt(core::Vector<ast::tokens::Token>::Iterator &it,
                 core::Vector<ast::tokens::Token>::Iterator end,
                 core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::RETURN) {
-    return wrongTokenError<ast::tokens::RETURN>(it);
+  if (it->type != ast::tokens::TokenType::RETURN) {
+    return wrongTokenError<ast::tokens::TokenType::RETURN>(it);
   }
   auto result = core::UniquePtr<ast::ReturnStmt>::create();
   result->line_start = it->start_line;
@@ -2135,7 +2145,7 @@ parseReturnStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(it);
   }
   ++it;
-  if (it->type == ast::tokens::SEMI) {
+  if (it->type == ast::tokens::TokenType::SEMI) {
     result->line_end = it->end_line;
     result->column_end = it->end_column;
     result->value = nullptr;
@@ -2150,8 +2160,8 @@ parseReturnStmt(core::Vector<ast::tokens::Token>::Iterator &it,
   if (it == end) {
     return eofError(result->value->getLineEnd(), result->value->getColumnEnd());
   }
-  if (it->type != ast::tokens::SEMI) {
-    return wrongTokenError<ast::tokens::SEMI>(it);
+  if (it->type != ast::tokens::TokenType::SEMI) {
+    return wrongTokenError<ast::tokens::TokenType::SEMI>(it);
   }
   result->line_end = it->end_line;
   result->column_end = it->end_column;
@@ -2164,7 +2174,7 @@ parseStatement(core::Vector<ast::tokens::Token>::Iterator &it,
                core::Vector<ast::tokens::Token>::Iterator end,
                core::UniquePtr<ast::symbolTable::Table> &table) {
   switch (it->type) {
-  case ast::tokens::VAR: {
+  case ast::tokens::TokenType::VAR: {
     auto stmt = parseVariableDeclaration(it, end, table);
     if (stmt.failed())
       return stmt;
@@ -2172,7 +2182,7 @@ parseStatement(core::Vector<ast::tokens::Token>::Iterator &it,
     *result = core::move(*stmt.getValue());
     return result;
   }
-  case ast::tokens::LB: {
+  case ast::tokens::TokenType::LB: {
     auto stmt = parseCompoundStmt(it, end, table);
     if (stmt.failed())
       return stmt;
@@ -2180,7 +2190,7 @@ parseStatement(core::Vector<ast::tokens::Token>::Iterator &it,
     *result = core::move(*stmt.getValue());
     return result;
   }
-  case ast::tokens::WHILE: {
+  case ast::tokens::TokenType::WHILE: {
     auto stmt = parseWhileStmt(it, end, table);
     if (stmt.failed())
       return stmt;
@@ -2188,7 +2198,7 @@ parseStatement(core::Vector<ast::tokens::Token>::Iterator &it,
     *result = core::move(*stmt.getValue());
     return result;
   }
-  case ast::tokens::DO: {
+  case ast::tokens::TokenType::DO: {
     auto stmt = parseDoWhileStmt(it, end, table);
     if (stmt.failed())
       return stmt;
@@ -2196,7 +2206,7 @@ parseStatement(core::Vector<ast::tokens::Token>::Iterator &it,
     *result = core::move(*stmt.getValue());
     return result;
   }
-  case ast::tokens::IF: {
+  case ast::tokens::TokenType::IF: {
     auto stmt = parseIfStmt(it, end, table);
     if (stmt.failed())
       return stmt;
@@ -2204,7 +2214,7 @@ parseStatement(core::Vector<ast::tokens::Token>::Iterator &it,
     *result = core::move(*stmt.getValue());
     return result;
   }
-  case ast::tokens::SWITCH: {
+  case ast::tokens::TokenType::SWITCH: {
     auto stmt = parseSwitchStmt(it, end, table);
     if (stmt.failed())
       return stmt;
@@ -2212,7 +2222,7 @@ parseStatement(core::Vector<ast::tokens::Token>::Iterator &it,
     *result = core::move(*stmt.getValue());
     return result;
   }
-  case ast::tokens::SEMI: {
+  case ast::tokens::TokenType::SEMI: {
     ast::NopStmt res;
     res.line_start = it->start_line;
     res.column_start = it->start_column;
@@ -2224,7 +2234,7 @@ parseStatement(core::Vector<ast::tokens::Token>::Iterator &it,
     ++it;
     return result;
   }
-  case ast::tokens::CONTINUE: {
+  case ast::tokens::TokenType::CONTINUE: {
     ast::ContinueStmt res;
     res.line_start = it->start_line;
     res.column_start = it->start_column;
@@ -2236,7 +2246,7 @@ parseStatement(core::Vector<ast::tokens::Token>::Iterator &it,
     ++it;
     return result;
   }
-  case ast::tokens::BREAK: {
+  case ast::tokens::TokenType::BREAK: {
     ast::BreakStmt res;
     res.line_start = it->start_line;
     res.column_start = it->start_column;
@@ -2248,7 +2258,7 @@ parseStatement(core::Vector<ast::tokens::Token>::Iterator &it,
     ++it;
     return result;
   }
-  case ast::tokens::RETURN: {
+  case ast::tokens::TokenType::RETURN: {
     auto stmt = parseReturnStmt(it, end, table);
     if (stmt.failed())
       return stmt;
@@ -2271,8 +2281,8 @@ core::LogicalResult<core::UniquePtr<ast::CompoundStmt>>
 parseCompoundStmt(core::Vector<ast::tokens::Token>::Iterator &it,
                   core::Vector<ast::tokens::Token>::Iterator end,
                   core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::LB) {
-    return wrongTokenError<ast::tokens::LB>(it);
+  if (it->type != ast::tokens::TokenType::LB) {
+    return wrongTokenError<ast::tokens::TokenType::LB>(it);
   }
   auto result = core::UniquePtr<ast::CompoundStmt>::create();
   result->line_start = it->start_line;
@@ -2283,7 +2293,7 @@ parseCompoundStmt(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(it);
   }
   ++it;
-  while (it->type != ast::tokens::RB) {
+  while (it->type != ast::tokens::TokenType::RB) {
     auto stmt = parseStatement(it, end, table);
     if (stmt.failed())
       return stmt;
@@ -2315,8 +2325,8 @@ parseArgument(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(result->type->getLineStart(),
                     result->type->getColumnStart());
   }
-  if (it->type != ast::tokens::ID) {
-    return wrongTokenError<ast::tokens::ID>(it);
+  if (it->type != ast::tokens::TokenType::ID) {
+    return wrongTokenError<ast::tokens::TokenType::ID>(it);
   }
   result->name = it->s;
   result->line_end = it->end_line;
@@ -2329,8 +2339,8 @@ core::LogicalResult<core::UniquePtr<ast::FunctionDeclaration>>
 parseFunctionDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
                          core::Vector<ast::tokens::Token>::Iterator end,
                          core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::FUN) {
-    return wrongTokenError<ast::tokens::FUN>(it);
+  if (it->type != ast::tokens::TokenType::FUN) {
+    return wrongTokenError<ast::tokens::TokenType::FUN>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
@@ -2348,8 +2358,8 @@ parseFunctionDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
     return eofError(result->returnType->getLineEnd(),
                     result->returnType->getColumnEnd());
   }
-  if (it->type != ast::tokens::ID) {
-    return wrongTokenError<ast::tokens::ID>(it);
+  if (it->type != ast::tokens::TokenType::ID) {
+    return wrongTokenError<ast::tokens::TokenType::ID>(it);
   }
   result->name = it->s;
   if (it + 1 == end) {
@@ -2358,14 +2368,14 @@ parseFunctionDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
   ++it;
   table->initialize();
 
-  if (it->type != ast::tokens::LP) {
-    return wrongTokenError<ast::tokens::LP>(it);
+  if (it->type != ast::tokens::TokenType::LP) {
+    return wrongTokenError<ast::tokens::TokenType::LP>(it);
   }
   if (it + 1 == end) {
     return eofError(it);
   }
   ++it;
-  if (it->type == ast::tokens::RP) {
+  if (it->type == ast::tokens::TokenType::RP) {
     if (it + 1 == end) {
       return eofError(it);
     }
@@ -2382,7 +2392,7 @@ parseFunctionDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
       }
       result->args.pushBack(core::move(argument.getValue()));
       switch (it->type) {
-      case ast::tokens::COMMA: {
+      case ast::tokens::TokenType::COMMA: {
         if (it + 1 == end) {
           return eofError(it);
         }
@@ -2390,7 +2400,7 @@ parseFunctionDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
         break;
       }
 
-      case ast::tokens::RP: {
+      case ast::tokens::TokenType::RP: {
         if (it + 1 == end) {
           return eofError(it);
         }
@@ -2400,7 +2410,8 @@ parseFunctionDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
       }
 
       default: {
-        return wrongTokenError<ast::tokens::RP, ast::tokens::COMMA>(it);
+        return wrongTokenError<ast::tokens::TokenType::RP,
+                               ast::tokens::TokenType::COMMA>(it);
       }
       }
     }
@@ -2424,12 +2435,12 @@ parseDeclarator(core::Vector<ast::tokens::Token>::Iterator &it,
   result->line_start = it->start_line;
   result->column_start = it->start_column;
   result->associatedLevel = table->current;
-  if (it->type != ast::tokens::ID) {
-    return wrongTokenError<ast::tokens::ID>(it);
+  if (it->type != ast::tokens::TokenType::ID) {
+    return wrongTokenError<ast::tokens::TokenType::ID>(it);
   }
   result->name = it->s;
   table->insert(result->name, varType->clone());
-  if ((it + 1 != end) && ((it + 1)->type == ast::tokens::EQUAL)) {
+  if ((it + 1 != end) && ((it + 1)->type == ast::tokens::TokenType::EQUAL)) {
     ++it;
     if (it + 1 == end) {
       return eofError(it);
@@ -2454,7 +2465,7 @@ core::LogicalResult<core::UniquePtr<ast::VariableDeclaration>>
 parseVariableDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
                          core::Vector<ast::tokens::Token>::Iterator end,
                          core::UniquePtr<ast::symbolTable::Table> &table) {
-  if (it->type != ast::tokens::VAR) {
+  if (it->type != ast::tokens::TokenType::VAR) {
     return parsingError("Unexpected token type. Expected `var`, but got `" +
                             to_string(it->type) + "`.",
                         it);
@@ -2486,7 +2497,7 @@ parseVariableDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
   bool finished = false;
   while (!finished) {
     switch (it->type) {
-    case ast::tokens::COMMA: {
+    case ast::tokens::TokenType::COMMA: {
       if (it + 1 == end) {
         return eofError(it);
       }
@@ -2502,13 +2513,14 @@ parseVariableDeclaration(core::Vector<ast::tokens::Token>::Iterator &it,
       break;
     }
 
-    case ast::tokens::SEMI: {
+    case ast::tokens::TokenType::SEMI: {
       finished = true;
       break;
     }
 
     default: {
-      return wrongTokenError<ast::tokens::SEMI, ast::tokens::COMMA>(it);
+      return wrongTokenError<ast::tokens::TokenType::SEMI,
+                             ast::tokens::TokenType::COMMA>(it);
     }
     }
   }
@@ -2523,35 +2535,35 @@ parseProgramItem(core::Vector<ast::tokens::Token>::Iterator &it,
                  core::Vector<ast::tokens::Token>::Iterator end,
                  core::UniquePtr<ast::symbolTable::Table> &table) {
   switch (it->type) {
-  case ast::tokens::VAR: {
+  case ast::tokens::TokenType::VAR: {
     auto item = parseVariableDeclaration(it, end, table);
     if (item.failed())
       return item;
     return core::UniquePtr<ast::ProgramItem>::create(
         core::move(*item.getValue()));
   }
-  case ast::tokens::STRUCT: {
+  case ast::tokens::TokenType::STRUCT: {
     auto item = parseStructDeclaration(it, end, table);
     if (item.failed())
       return item;
     return core::UniquePtr<ast::ProgramItem>::create(
         core::move(*item.getValue()));
   }
-  case ast::tokens::UNION: {
+  case ast::tokens::TokenType::UNION: {
     auto item = parseUnionDeclaration(it, end, table);
     if (item.failed())
       return item;
     return core::UniquePtr<ast::ProgramItem>::create(
         core::move(*item.getValue()));
   }
-  case ast::tokens::FUN: {
+  case ast::tokens::TokenType::FUN: {
     auto item = parseFunctionDeclaration(it, end, table);
     if (item.failed())
       return item;
     return core::UniquePtr<ast::ProgramItem>::create(
         core::move(*item.getValue()));
   }
-  case ast::tokens::ALIAS: {
+  case ast::tokens::TokenType::ALIAS: {
     return parseAliasDeclaration(it, end, table);
   }
   default: {

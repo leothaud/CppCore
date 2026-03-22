@@ -17,7 +17,7 @@ import core;
 
 namespace ast::tokens {
 
-export enum TokenType {
+export enum class TokenType {
   DOUBLE_MINUS,
   MINUS_EQUAL,
   ARROW,
@@ -106,21 +106,23 @@ export enum TokenType {
 namespace {
 bool noArgToken(TokenType type) {
   switch (type) {
-  case STRING:
-  case ID:
-  case INT:
-  case CHAR:
+  case TokenType::STRING:
+  case TokenType::ID:
+  case TokenType::INT:
+  case TokenType::CHAR:
     return false;
   default:
     return true;
   }
 }
 
-bool stringArgToken(TokenType type) { return (type == STRING) || (type == ID); }
+bool stringArgToken(TokenType type) {
+  return (type == TokenType::STRING) || (type == TokenType::ID);
+}
 
-bool intArgToken(TokenType type) { return type == INT; }
+bool intArgToken(TokenType type) { return type == TokenType::INT; }
 
-bool charArgToken(TokenType type) { return type == CHAR; }
+bool charArgToken(TokenType type) { return type == TokenType::CHAR; }
 
 } // namespace
 
@@ -135,30 +137,30 @@ export struct Token {
 
   ~Token() {
     switch (type) {
-    case STRING:
-    case ID:
+    case TokenType::STRING:
+    case TokenType::ID:
       s.~String();
     default:;
     }
   }
 
   Token()
-      : type(UNKNOWN), i(0), start_line(0), start_column(0), end_line(0),
-        end_column(0) {}
+      : type(TokenType::UNKNOWN), i(0), start_line(0), start_column(0),
+        end_line(0), end_column(0) {}
 
   Token(const Token &other)
       : type(other.type), start_line(other.start_line),
         start_column(other.start_column), end_line(other.end_line),
         end_column(other.end_column) {
     switch (type) {
-    case STRING:
-    case ID:
+    case TokenType::STRING:
+    case TokenType::ID:
       s = other.s;
       break;
-    case INT:
+    case TokenType::INT:
       i = other.i;
       break;
-    case CHAR:
+    case TokenType::CHAR:
       c = other.c;
       break;
     default:
@@ -171,14 +173,14 @@ export struct Token {
         start_column(other.start_column), end_line(other.end_line),
         end_column(other.end_column) {
     switch (type) {
-    case STRING:
-    case ID:
+    case TokenType::STRING:
+    case TokenType::ID:
       s = core::move(other.s);
       break;
-    case INT:
+    case TokenType::INT:
       i = core::move(other.i);
       break;
-    case CHAR:
+    case TokenType::CHAR:
       c = core::move(other.c);
       break;
     default:
@@ -193,15 +195,15 @@ export struct Token {
     end_line = other.end_line;
     end_column = other.end_column;
     switch (type) {
-    case STRING:
-    case ID:
+    case TokenType::STRING:
+    case TokenType::ID:
       s.~String();
       s = other.s;
       break;
-    case INT:
+    case TokenType::INT:
       i = other.i;
       break;
-    case CHAR:
+    case TokenType::CHAR:
       c = other.c;
       break;
     default:
@@ -217,15 +219,15 @@ export struct Token {
     end_line = other.end_line;
     end_column = other.end_column;
     switch (type) {
-    case STRING:
-    case ID:
+    case TokenType::STRING:
+    case TokenType::ID:
       s.~String();
       s = core::move(other.s);
       break;
-    case INT:
+    case TokenType::INT:
       i = core::move(other.i);
       break;
-    case CHAR:
+    case TokenType::CHAR:
       c = core::move(other.c);
       break;
     default:
@@ -265,167 +267,167 @@ export struct Token {
 
 export core::String to_string(TokenType type) {
   switch (type) {
-  case DOUBLE_MINUS:
+  case TokenType::DOUBLE_MINUS:
     return "doubleMinus";
-  case MINUS_EQUAL:
+  case TokenType::MINUS_EQUAL:
     return "minusEqual";
-  case ARROW:
+  case TokenType::ARROW:
     return "arrow";
-  case MINUS:
+  case TokenType::MINUS:
     return "minus";
-  case COMMA:
+  case TokenType::COMMA:
     return "comma";
-  case SEMI:
+  case TokenType::SEMI:
     return "semi";
-  case COLON:
+  case TokenType::COLON:
     return "colon";
-  case EXCLAMATION_EQUAL:
+  case TokenType::EXCLAMATION_EQUAL:
     return "exclamationEqual";
-  case EXCLAMATION:
+  case TokenType::EXCLAMATION:
     return "exclamation";
-  case QUESTION:
+  case TokenType::QUESTION:
     return "question";
-  case DOT:
+  case TokenType::DOT:
     return "dot";
-  case LP:
+  case TokenType::LP:
     return "lp";
-  case RP:
+  case TokenType::RP:
     return "rp";
-  case LSB:
+  case TokenType::LSB:
     return "lsb";
-  case RSB:
+  case TokenType::RSB:
     return "rsb";
-  case LB:
+  case TokenType::LB:
     return "lb";
-  case RB:
+  case TokenType::RB:
     return "rb";
-  case STAR_EQUAL:
+  case TokenType::STAR_EQUAL:
     return "starEqual";
-  case STAR:
+  case TokenType::STAR:
     return "star";
-  case SLASH_EQUAL:
+  case TokenType::SLASH_EQUAL:
     return "slashEqual";
-  case SLASH:
+  case TokenType::SLASH:
     return "slash";
-  case DOUBLE_AMPERSAND_EQUAL:
+  case TokenType::DOUBLE_AMPERSAND_EQUAL:
     return "doubleAmpersandEqual";
-  case DOUBLE_AMPERSAND:
+  case TokenType::DOUBLE_AMPERSAND:
     return "doubleAmpersand";
-  case AMPERSAND_EQUAL:
+  case TokenType::AMPERSAND_EQUAL:
     return "ampersandEqual";
-  case AMPERSAND:
+  case TokenType::AMPERSAND:
     return "ampersand";
-  case PERCENT_EQUAL:
+  case TokenType::PERCENT_EQUAL:
     return "percentEqual";
-  case PERCENT:
+  case TokenType::PERCENT:
     return "percent";
-  case DOUBLE_WEDGE_EQUAL:
+  case TokenType::DOUBLE_WEDGE_EQUAL:
     return "doubleWedgeEqual";
-  case DOUBLE_WEDGE:
+  case TokenType::DOUBLE_WEDGE:
     return "doubleWedge";
-  case WEDGE_EQUAL:
+  case TokenType::WEDGE_EQUAL:
     return "wedgeEqual";
-  case WEDGE:
+  case TokenType::WEDGE:
     return "wedge";
-  case DOUBLE_PLUS:
+  case TokenType::DOUBLE_PLUS:
     return "doublePlus";
-  case PLUS_EQUAL:
+  case TokenType::PLUS_EQUAL:
     return "plusEqual";
-  case PLUS:
+  case TokenType::PLUS:
     return "plus";
-  case DOUBLE_LAB_EQUAL:
+  case TokenType::DOUBLE_LAB_EQUAL:
     return "doubleLabEqual";
-  case DOUBLE_LAB:
+  case TokenType::DOUBLE_LAB:
     return "doubleLab";
-  case LAB_EQUAL:
+  case TokenType::LAB_EQUAL:
     return "labEqual";
-  case LAB:
+  case TokenType::LAB:
     return "lab";
-  case DOUBLE_EQUAL:
+  case TokenType::DOUBLE_EQUAL:
     return "doubleEqual";
-  case EQUAL:
+  case TokenType::EQUAL:
     return "equal";
-  case DOUBLE_RAB_EQUAL:
+  case TokenType::DOUBLE_RAB_EQUAL:
     return "doubleRabEqual";
-  case DOUBLE_RAB:
+  case TokenType::DOUBLE_RAB:
     return "doubleRab";
-  case RAB_EQUAL:
+  case TokenType::RAB_EQUAL:
     return "rabEqual";
-  case RAB:
+  case TokenType::RAB:
     return "rab";
-  case DOUBLE_PIPE_EQUAL:
+  case TokenType::DOUBLE_PIPE_EQUAL:
     return "doublePipeEqual";
-  case DOUBLE_PIPE:
+  case TokenType::DOUBLE_PIPE:
     return "doublePipe";
-  case PIPE_EQUAL:
+  case TokenType::PIPE_EQUAL:
     return "pipeEqual";
-  case PIPE:
+  case TokenType::PIPE:
     return "pipe";
-  case TILDE:
+  case TokenType::TILDE:
     return "tidle";
-  case ALIAS:
+  case TokenType::ALIAS:
     return "alias";
-  case BIT:
+  case TokenType::BIT:
     return "bit";
-  case BITCAST:
+  case TokenType::BITCAST:
     return "bitcast";
-  case BREAK:
+  case TokenType::BREAK:
     return "break";
-  case CASE:
+  case TokenType::CASE:
     return "case";
-  case CAST:
+  case TokenType::CAST:
     return "cast";
-  case CONTINUE:
+  case TokenType::CONTINUE:
     return "continue";
-  case DEFAULT:
+  case TokenType::DEFAULT:
     return "default";
-  case DO:
+  case TokenType::DO:
     return "do";
-  case ELSE:
+  case TokenType::ELSE:
     return "else";
-  case FALSE:
+  case TokenType::FALSE:
     return "false";
-  case FOR:
+  case TokenType::FOR:
     return "for";
-  case FUN:
+  case TokenType::FUN:
     return "fun";
-  case IF:
+  case TokenType::IF:
     return "if";
-  case OPERATOR:
+  case TokenType::OPERATOR:
     return "operator";
-  case OTHER:
+  case TokenType::OTHER:
     return "other";
-  case RETURN:
+  case TokenType::RETURN:
     return "return";
-  case SIZEOF:
+  case TokenType::SIZEOF:
     return "sizeof";
-  case STRUCT:
+  case TokenType::STRUCT:
     return "struct";
-  case SWITCH:
+  case TokenType::SWITCH:
     return "switch";
-  case SYSCALL:
+  case TokenType::SYSCALL:
     return "syscall";
-  case THIS:
+  case TokenType::THIS:
     return "this";
-  case TRUE:
+  case TokenType::TRUE:
     return "true";
-  case UNION:
+  case TokenType::UNION:
     return "union";
-  case VAR:
+  case TokenType::VAR:
     return "var";
-  case VOID:
+  case TokenType::VOID:
     return "void";
-  case WHILE:
+  case TokenType::WHILE:
     return "while";
-  case INT:
+  case TokenType::INT:
     return "int";
-  case CHAR:
+  case TokenType::CHAR:
     return "char";
-  case STRING:
+  case TokenType::STRING:
     return "string";
-  case ID:
+  case TokenType::ID:
     return "id";
-  case UNKNOWN:
+  case TokenType::UNKNOWN:
     return "unknown";
     break;
   }
@@ -434,19 +436,19 @@ export core::String to_string(TokenType type) {
 export const core::String to_string(Token tkn) {
   core::String result = to_string(tkn.type) + "(";
   switch (tkn.type) {
-  case INT: {
+  case TokenType::INT: {
     result += core::String::of(tkn.i) + ", ";
     break;
   }
-  case CHAR: {
+  case TokenType::CHAR: {
     result += "'" + core::String::of(tkn.c) + "', ";
     break;
   }
-  case STRING: {
+  case TokenType::STRING: {
     result += "\"" + tkn.s + "\", ";
     break;
   }
-  case ID: {
+  case TokenType::ID: {
     result += tkn.s + ", ";
     break;
   }

@@ -209,7 +209,7 @@ public:
 };
 
 export struct OperationDeclaration : public Node {
-  enum OperatorType {
+  enum class OperatorType {
     ADD_OP,
     SUB_OP,
     MUL_OP,
@@ -224,27 +224,27 @@ export struct OperationDeclaration : public Node {
   };
   static core::String to_string(OperatorType opType) {
     switch (opType) {
-    case ADD_OP:
+    case OperatorType::ADD_OP:
       return "+";
-    case SUB_OP:
+    case OperatorType::SUB_OP:
       return "-";
-    case MUL_OP:
+    case OperatorType::MUL_OP:
       return "*";
-    case MOD_OP:
+    case OperatorType::MOD_OP:
       return "%";
-    case DIV_OP:
+    case OperatorType::DIV_OP:
       return "/";
-    case LAND_OP:
+    case OperatorType::LAND_OP:
       return "&&";
-    case LOR_OP:
+    case OperatorType::LOR_OP:
       return "||";
-    case LXOR_OP:
+    case OperatorType::LXOR_OP:
       return "^^";
-    case LNOT_OP:
+    case OperatorType::LNOT_OP:
       return "!";
-    case EQ_OP:
+    case OperatorType::EQ_OP:
       return "==";
-    case LT_OP:
+    case OperatorType::LT_OP:
       return "<";
     }
   }
