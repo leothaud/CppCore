@@ -20,24 +20,26 @@ namespace core {
 
 #ifndef NDEBUG
 
+[[noreturn, clang::always_inline]] void doFail(const core::String message) {
+  serr << "Assertion failed.\n" << message << "\n";
+  exit(1);
+}
+
 export void assert(bool cond, const core::String message) {
   if (!cond) {
-    serr << "Assertion failed.\n" << message << "\n";
-    exit(1);
+    doFail(message);
   }
 }
 
 export void assert(bool cond, const char *message) {
   if (!cond) {
-    serr << "Assertion failed.\n" << message << "\n";
-    exit(1);
+    doFail(message);
   }
 }
 
 export void assert(bool cond) {
   if (!cond) {
-    serr << "Assertion failed.\n";
-    exit(1);
+    doFail("");
   }
 }
 

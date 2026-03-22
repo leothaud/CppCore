@@ -14,6 +14,7 @@
 export module core;
 
 export import :allocs;
+export import :builtins;
 export import :cstring;
 export import :errors;
 export import :functions;
@@ -29,7 +30,7 @@ export import :string;
 export import :stringLiteral;
 export import :syscalls;
 export import :traits;
-export import :types;
 export import :uniquePtr;
 export import :variant;
 export import :vector;
+export import :zip;

@@ -13,7 +13,7 @@
  */
 export module core:initializerList;
 
-import :types;
+import :builtins;
 
 namespace std {
 export template <typename T> class initializer_list {

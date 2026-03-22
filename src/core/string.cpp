@@ -13,7 +13,7 @@
  */
 export module core:string;
 
-import :types;
+import :builtins;
 import :allocs;
 import :cstring;
 import :syscalls;

@@ -13,7 +13,7 @@
  */
 export module core:stream;
 
-import :types;
+import :builtins;
 import :string;
 
 namespace core {

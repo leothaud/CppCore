@@ -14,7 +14,7 @@
 export module core:sharedPtr;
 
 import :traits;
-import :types;
+import :builtins;
 
 namespace core {
 

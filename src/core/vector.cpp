@@ -16,7 +16,7 @@ export module core:vector;
 import :errors;
 import :initializerList;
 import :traits;
-import :types;
+import :builtins;
 
 namespace core {
 

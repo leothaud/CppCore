@@ -15,7 +15,7 @@ export module core:variant;
 
 import :start;
 import :traits;
-import :types;
+import :builtins;
 
 namespace core {
 
@@ -198,7 +198,7 @@ public:
     if (index == this->index) {
       return *reinterpret_cast<T *>(value);
     }
-    __builtin_trap();
+    trap();
   }
 
   template <typename T>
@@ -207,7 +207,7 @@ public:
     if (index == this->index) {
       return *reinterpret_cast<T *>(value);
     }
-    __builtin_trap();
+    trap();
   }
 
   template <unsigned N, typename F>
@@ -217,7 +217,7 @@ public:
       return f(*reinterpret_cast<t *>(value));
     }
     if constexpr (N == 0) {
-      __builtin_trap();
+      trap();
     } else {
       return visitImpl<N - 1, F>(f);
     }
@@ -231,7 +231,7 @@ public:
       return f(*reinterpret_cast<const t *>(value));
     }
     if constexpr (N == 0) {
-      __builtin_trap();
+      trap();
     } else {
       return visitImpl<N - 1, F>(f);
     }

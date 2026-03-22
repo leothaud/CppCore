@@ -14,7 +14,7 @@
 export module core:stringLiteral;
 
 import :string;
-import :types;
+import :builtins;
 
 namespace core {
 

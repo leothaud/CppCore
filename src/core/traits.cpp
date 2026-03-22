@@ -13,7 +13,7 @@
  */
 export module core:traits;
 
-import :types;
+import :builtins;
 
 export template <typename T> T &&declval() noexcept;
 

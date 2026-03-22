@@ -13,7 +13,7 @@
  */
 export module core:cstring;
 
-import :types;
+import :builtins;
 
 namespace core {
 

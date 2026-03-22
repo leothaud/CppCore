@@ -13,7 +13,7 @@
  */
 export module core:start;
 
-import :types;
+import :builtins;
 import :syscalls;
 import :allocs;
 
@@ -22,7 +22,7 @@ namespace core {
 extern "C" export [[gnu::no_stack_protector]] void
 __cxa_pure_virtual() asm("__cxa_pure_virtual");
 extern "C" export [[gnu::no_stack_protector]] void __cxa_pure_virtual() {
-  __builtin_trap();
+  trap();
 }
 
 extern "C" export u64 __stack_chk_guard asm("__stack_chk_guard") = 167;

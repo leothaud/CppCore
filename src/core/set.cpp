@@ -57,7 +57,7 @@ public:
 
       current = current->next;
     }
-    __builtin_unreachable();
+    unreachable();
   }
 
   bool contains(T value) const {

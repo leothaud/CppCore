@@ -15,7 +15,7 @@ export module core:allocs;
 
 import :traits;
 import :syscalls;
-import :types;
+import :builtins;
 
 namespace core {
 
@@ -57,7 +57,7 @@ struct Allocator {
         return current;
       current = current->next;
     }
-    __builtin_trap();
+    trap();
   }
 
   void split(Header *block, u64 size) {

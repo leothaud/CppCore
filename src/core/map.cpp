@@ -55,7 +55,7 @@ public:
 
       current = current->next;
     }
-    __builtin_unreachable();
+    unreachable();
   }
   void insert(const K key, const V &value) {
     if (front == nullptr) {
@@ -78,7 +78,7 @@ public:
 
       current = current->next;
     }
-    __builtin_unreachable();
+    unreachable();
   }
 
   bool contains(const K key) const {
@@ -109,10 +109,10 @@ public:
         return current->entry.value;
       current = current->next;
     }
-    __builtin_trap();
+    trap();
   }
 
-  V get(const K key) const {
+  V &get(const K key) const {
     assert(contains(key));
     auto *current = front;
     while (current) {
@@ -120,11 +120,11 @@ public:
         return current->entry.value;
       current = current->next;
     }
-    __builtin_trap();
+    trap();
   }
 
   V &operator[](K key) { return get(key); }
-  V operator[](K key) const { return get(key); }
+  V &operator[](K key) const { return get(key); }
 
   ~Map() {
     auto *current = front;
