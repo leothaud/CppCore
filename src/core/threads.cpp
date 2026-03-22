@@ -71,10 +71,10 @@ template <typename H, typename... T> struct ParameterPack<H, T...> {
   ParameterPack(H head, T... tail) : head(head), tail(forward<T>(tail)...) {}
 };
 template <typename F, typename... ARGS> struct FunEntry {
-  F &fun;
+  F fun;
   ParameterPack<ARGS...> args;
 
-  FunEntry(F &fun, ARGS... args) : fun(fun), args(forward<ARGS>(args)...) {}
+  FunEntry(F fun, ARGS... args) : fun(fun), args(forward<ARGS>(args)...) {}
 };
 
 template <u64 I, typename T> struct ArgsBuilder;
@@ -104,30 +104,29 @@ void doCall(u8 *entry) {
              IndicesSequenceBuilder<sizeof...(ARGS)>{});
 }
 
-export template <typename F, typename... ARGS>
-  requires(IsCallable<F, ARGS...>)
+export template <auto fn, typename... ARGS>
+  requires(IsCallable<decltype(fn), ARGS...>)
 [[clang::always_inline, clang::no_stack_protector]] int *
-startThread(F &fn, ARGS... args) {
+startThread(ARGS... args) {
   static constexpr u64 stackSize = 8 * 1024 * 1024;
   u8 *stack = new u8[stackSize];
   stackHead *head =
       reinterpret_cast<stackHead *>(stack + stackSize - sizeof(stackHead));
-  u8 *entryPtr = new u8[sizeof(FunEntry<F, ARGS...>)];
-  FunEntry<F, ARGS...> *entry =
-      new (entryPtr) FunEntry<F, ARGS...>(fn, args...);
+  u8 *entryPtr = new u8[sizeof(FunEntry<decltype(fn), ARGS...>)];
+  FunEntry<decltype(fn), ARGS...> *entry =
+      new (entryPtr) FunEntry<decltype(fn), ARGS...>(fn, args...);
   head->entry = threadEntry;
   head->futex = 1;
-  head->fn = doCall<F, ARGS...>;
+  head->fn = doCall<decltype(fn), ARGS...>;
   head->arg = entryPtr;
   head->stack = stack;
   newthread(head);
   return &head->futex;
 }
 
-export template <typename F, typename... ARGS>
-  requires(!IsCallable<F, ARGS...>)
-[[clang::always_inline, clang::no_stack_protector]] int *startThread(F &,
-                                                                     ARGS...) {
+export template <auto fn, typename... ARGS>
+  requires(!IsCallable<decltype(fn), ARGS...>)
+[[clang::always_inline, clang::no_stack_protector]] int *startThread(ARGS...) {
   static_assert(
       false,
       "startThread arguments are not compatible with the target function.");
