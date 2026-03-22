@@ -19,6 +19,7 @@ import :syscalls;
 import :allocs;
 import :mutex;
 import :elf64;
+import :logger;
 
 namespace core {
 
@@ -195,6 +196,8 @@ init(int argc, char **argv, char **envp, Elf32Auxv *auxv) {
     write(stderr, "Error initializing tls.\n");
     exit(1);
   }
+
+  initializeLoggers();
 
   int res = main();
   if (res) {

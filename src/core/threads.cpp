@@ -20,6 +20,7 @@ import :stream;
 import :mutex;
 import :vector;
 import :start;
+import :logger;
 
 #ifdef CORE_THREAD
 
@@ -27,15 +28,17 @@ namespace core {
 
 struct [[gnu::aligned(16)]] stackHead {
   void (*entry)(stackHead *);
+  TlsHeader *tlsHeader;
   int futex;
   void (*fn)(u8 *);
   u8 *arg;
   u8 *stack;
-  TlsHeader *tlsHeader;
+  Logger *logger;
 };
 
 [[clang::noinline, clang::no_stack_protector]] void
 threadEntry(stackHead *head) {
+  getThreadLogger() = *head->logger;
   head->fn(head->arg);
   __atomic_store_n(&head->futex, 0, __ATOMIC_SEQ_CST);
   futexWakeAll(&head->futex);
@@ -52,7 +55,7 @@ struct Thread {
 [[gnu::naked]] long newthread(stackHead *stack) {
 #if defined(linux) and defined(__x86_64__) and __has_extension(gnu_asm)
   __asm__ volatile("mov %%rdi, %%rsi\n"
-                   "mov 40(%%rsi), %%r8\n"
+                   "mov 8(%%rsi), %%r8\n"
                    "mov $0xd0f00, %%edi\n"
                    "mov $56, %%eax\n"
                    "xor %%edx, %%edx\n"
@@ -114,15 +117,15 @@ void doCall(u8 *entry) {
 export template <auto fn, typename... ARGS>
   requires(IsCallable<decltype(fn), ARGS...>)
 [[clang::always_inline, clang::no_stack_protector]] int *
-startThread(ARGS... args) {
+startThread(Logger *logger, ARGS... args) {
   static constexpr u64 stackSize = 8 * 1024 * 1024;
   u8 *stack = new u8[stackSize];
   stackHead *head = reinterpret_cast<stackHead *>(
       reinterpret_cast<u64>((stack + stackSize - sizeof(stackHead))) & ~0xFllu);
   u8 *entryPtr = new u8[sizeof(FunEntry<decltype(fn), ARGS...>)];
-  FunEntry<decltype(fn), ARGS...> *entry =
-      new (entryPtr) FunEntry<decltype(fn), ARGS...>(fn, args...);
-
+  FunEntry<decltype(fn), ARGS...> *entry = new (entryPtr)
+      FunEntry<decltype(fn), ARGS...>(fn, forward<ARGS>(args)...);
+  head->logger = logger;
   head->entry = threadEntry;
   head->futex = 1;
   head->fn = doCall<decltype(fn), ARGS...>;
@@ -135,6 +138,13 @@ startThread(ARGS... args) {
 }
 
 export template <auto fn, typename... ARGS>
+  requires(IsCallable<decltype(fn), ARGS...>)
+[[clang::always_inline, clang::no_stack_protector]] int *
+startThread(ARGS... args) {
+  return startThread<fn>(&stdLogger, forward<ARGS>(args)...);
+}
+
+export template <auto fn, typename... ARGS>
   requires(!IsCallable<decltype(fn), ARGS...>)
 [[clang::always_inline, clang::no_stack_protector]] int *startThread(ARGS...) {
   static_assert(
@@ -142,6 +152,14 @@ export template <auto fn, typename... ARGS>
       "startThread arguments are not compatible with the target function.");
 }
 
+export template <auto fn, typename... ARGS>
+  requires(!IsCallable<decltype(fn), ARGS...>)
+[[clang::always_inline, clang::no_stack_protector]] int *startThread(Logger *,
+                                                                     ARGS...) {
+  static_assert(
+      false,
+      "startThread arguments are not compatible with the target function.");
+}
 }; // namespace core
 
 #endif

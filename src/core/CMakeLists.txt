@@ -28,6 +28,7 @@ addModule(cidmolCore
   zip.cpp
 )
 addSource(cidmolCore
+  loggerImpl.cpp
   start.S
   main.cpp
 )

@@ -60,7 +60,7 @@ if(ENABLE_THREADS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCORE_THREAD")
 endif(ENABLE_THREADS)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -ftls-model=local-exec -Wall -Wextra -Werror -Wno-unused-command-line-argument  -march=native \
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}   -Wall -Wextra -Werror -Wno-unused-command-line-argument  -march=native \
   -mtune=native -fno-rtti -fno-exceptions -nostdlib -ffreestanding -nostdinc \
   -fno-lax-vector-conversions -fno-math-errno -fno-trapping-math -ferror-limit=0")
 
