@@ -15,5 +15,5 @@
  #if defined(__linux__) && defined(__x86_64__)
  #include "start_linux_x86_64.S"
  #else
- #error "The start file is only available for Linux x86_64.
+ #error The start file is only available for Linux x86_64.
  #endif
