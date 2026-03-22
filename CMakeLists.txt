@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.2.3)
+cmake_minimum_required(VERSION 4.3.0)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -49,7 +49,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(Cidmol LANGUAGES CXX ASM)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -march=native \
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCORE_THREAD -ftls-model=local-exec -Wall -Wextra -Werror -Wno-unused-command-line-argument  -march=native \
   -mtune=native -fno-rtti -fno-exceptions -nostdlib -ffreestanding -nostdinc \
   -fno-lax-vector-conversions -fno-math-errno -fno-trapping-math -ferror-limit=0")
 
@@ -94,8 +95,10 @@ function(addExecutable name main)
 
   set(libName "${name}Lib")
   add_library(${libName})
-  target_sources(${libName} PRIVATE ${modSrcs} PUBLIC FILE_SET CXX_MODULES BASE_DIRS ${PROJECT_SOURCE_DIR}/src FILES ${mods})
+  target_sources(${libName} PRIVATE ${modSrcs} PUBLIC FILE_SET cxx_modules TYPE CXX_MODULES BASE_DIRS ${PROJECT_SOURCE_DIR}/src FILES ${mods})
+  target_compile_features(${libName} PUBLIC cxx_std_23)
   add_executable(${name} ${CMAKE_CURRENT_SOURCE_DIR}/${main})
+  target_compile_features(${name} PUBLIC cxx_std_23)
   target_link_libraries(${name} PRIVATE ${libName})
   target_link_options(${name} PRIVATE -nostdlib -static)
 endfunction(addExecutable)

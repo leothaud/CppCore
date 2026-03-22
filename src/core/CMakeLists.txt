@@ -1,5 +1,6 @@
 addModule(cidmolCore
   allocs.cpp
+  builtins.cpp
   core.cpp
   cstring.cpp
   errors.cpp
@@ -7,6 +8,8 @@ addModule(cidmolCore
   initializerList.cpp
   logicalResult.cpp
   map.cpp
+  multiset.cpp
+  mutex.cpp
   pair.cpp
   set.cpp
   sharedPtr.cpp
@@ -15,11 +18,12 @@ addModule(cidmolCore
   string.cpp
   stringLiteral.cpp
   syscalls.cpp
+  threads.cpp
   traits.cpp
-  types.cpp
   uniquePtr.cpp
   variant.cpp
   vector.cpp
+  zip.cpp
 )
 addSource(cidmolCore
   start.S
