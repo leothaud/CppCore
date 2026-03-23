@@ -197,7 +197,6 @@ init(int argc, char **argv, char **envp, Elf32Auxv *auxv) {
   Elf64Phdr *phdrs = static_cast<Elf64Phdr *>(auxvVals[AT_PHDR].aPtr);
   u64 phnum = auxvVals[AT_PHNUM].aVal;
   u64 phent = auxvVals[AT_PHENT].aVal;
-
   for (u64 i = 0; i < phnum; ++i) {
     auto *ph = reinterpret_cast<Elf64Phdr *>(reinterpret_cast<u8 *>(phdrs) +
                                              i * phent);
@@ -205,7 +204,7 @@ init(int argc, char **argv, char **envp, Elf32Auxv *auxv) {
       tlsInfo = TlsInfo{
           .memsz = ph->p_memsz,
           .filesz = ph->p_filesz,
-          .vaddr = ph->p_vaddr, // absolute VA — the kernel already mapped it
+          .vaddr = ph->p_vaddr,
           .align = ph->p_align,
       };
     }
@@ -220,6 +219,13 @@ init(int argc, char **argv, char **envp, Elf32Auxv *auxv) {
   }
 
   initializeLoggers();
+  int fd = open(argv[0], O_RDONLY, 0666);
+  u64 size = getFileSize(fd);
+  char *buffer = reinterpret_cast<char *>(
+      mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
+  close(fd);
+  initializeSymbolNames(buffer);
+  munmap(buffer, size);
 
   int res = main();
   if (res) {
