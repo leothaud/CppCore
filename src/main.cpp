@@ -3,12 +3,19 @@ import ast;
 import frontend;
 
 core::Mutex mutex;
-static constexpr int x_size = 1024 * 1024;
-volatile int x[x_size];
 
-thread_local int local = 2;
+struct X {
+  int x;
+  X(int x) : x(x) {}
+  ~X() {}
+  X &operator++() {
+    ++x;
+    return *this;
+  }
+  operator int() { return x; }
+};
 
-struct X {};
+thread_local X local = 2;
 
 void f(u64 n) {
   auto &logger = core::getThreadLogger();
@@ -20,7 +27,7 @@ void f(u64 n) {
 }
 
 int main() {
-  int numThread = 8;
+  int numThread = 48;
   for (int i = 0; i < numThread; ++i) {
     core::startThread<f>(i);
   }

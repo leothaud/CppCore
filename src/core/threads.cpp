@@ -42,6 +42,13 @@ threadEntry(stackHead *head) {
   head->fn(head->arg);
   __atomic_store_n(&head->futex, 0, __ATOMIC_SEQ_CST);
   futexWakeAll(&head->futex);
+
+  auto &cxaAtExitWrapper = getCxaThreadAtExitWrapper();
+  for (u64 i = cxaAtExitWrapper.index; i > 0; --i) {
+    cxaAtExitWrapper.func[i](cxaAtExitWrapper.arg[i]);
+    cxaAtExitWrapper.func[i] = nullptr;
+  }
+
   delete[] head->tlsHeader->tlsInfo;
   delete[] head->arg;
   delete[] head->stack;

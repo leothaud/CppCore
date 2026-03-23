@@ -113,15 +113,37 @@ static inline constexpr u64 numCxaAtExitElements = 128;
 CxaAtExitElement cxaAtExitElements[numCxaAtExitElements];
 u32 cxaAtExitIndex = 0;
 
+struct CxaThreadAtExitWrapper {
+  void (*func[numCxaAtExitElements])(void *), *arg[numCxaAtExitElements];
+  u32 index = 0;
+};
+
+export CxaThreadAtExitWrapper &getCxaThreadAtExitWrapper() {
+  static thread_local CxaThreadAtExitWrapper wrapper{};
+  return wrapper;
+}
+
 extern "C" export [[gnu::no_stack_protector]] int
 __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
   if (cxaAtExitIndex == numCxaAtExitElements) {
-    // core::serr << "cxa_atexit stack too small.\n";
+    core::serr << "cxa_atexit stack too small.\n";
     core::exit(1);
   }
   cxaAtExitElements[cxaAtExitIndex].func = func;
   cxaAtExitElements[cxaAtExitIndex].arg = arg;
   cxaAtExitElements[cxaAtExitIndex].dso = dso;
+  return 0;
+}
+
+extern "C" export [[gnu::no_stack_protector]] int
+__cxa_thread_atexit(void(func)(void *), void *arg, void *) {
+  auto &wrapper = getCxaThreadAtExitWrapper();
+  if (wrapper.index == numCxaAtExitElements) {
+    core::serr << "cxa_thread_atexit stack too small.\n";
+    core::exit(1);
+  }
+  wrapper.func[wrapper.index] = func;
+  wrapper.arg[wrapper.index] = arg;
   return 0;
 }
 
