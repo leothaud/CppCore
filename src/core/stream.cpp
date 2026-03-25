@@ -15,6 +15,7 @@ export module core:stream;
 
 import :builtins;
 import :string;
+import :ioUtils;
 
 namespace core {
 
@@ -38,6 +39,10 @@ public:
   FdStream &operator<<(u16 i);
   FdStream &operator<<(u32 i);
   FdStream &operator<<(u64 i);
+
+  FdStream &operator<<(Hex x);
+  template <typename... Ts> FdStream &operator<<(Color<Ts...> x);
+
   FdStream &operator<<(String str) {
     write(fd, str.ptr(), str.length());
     return *this;
@@ -141,6 +146,92 @@ FdStream &FdStream::operator<<(u8 i) { return printInt<false>(*this, (i64)i); }
 FdStream &FdStream::operator<<(u16 i) { return printInt<false>(*this, (i64)i); }
 FdStream &FdStream::operator<<(u32 i) { return printInt<false>(*this, (i64)i); }
 FdStream &FdStream::operator<<(u64 i) { return printInt<false>(*this, (i64)i); }
+
+FdStream &FdStream::operator<<(Hex x) {
+  *this << "0x";
+  static char digit[16];
+  auto toHex = [] [[gnu::always_inline]] (u64 value) -> char {
+    switch (value) {
+    case 0:
+      return '0';
+    case 1:
+      return '1';
+    case 2:
+      return '2';
+    case 3:
+      return '3';
+    case 4:
+      return '4';
+    case 5:
+      return '5';
+    case 6:
+      return '6';
+    case 7:
+      return '7';
+    case 8:
+      return '8';
+    case 9:
+      return '9';
+    case 10:
+      return 'a';
+    case 11:
+      return 'b';
+    case 12:
+      return 'c';
+    case 13:
+      return 'd';
+    case 14:
+      return 'e';
+    default:
+      return 'f';
+    }
+  };
+  int index = 15;
+  u64 value = x.value;
+  while (value > 0) {
+    u64 next = value & 0xFllu;
+    digit[index--] = toHex(next);
+    value >>= 4;
+  }
+  if (index == 15) {
+    *this << '0';
+  } else {
+    for (int i = index; i < 16; ++i) {
+      *this << digit[i];
+    }
+  }
+  return *this;
+}
+
+template <typename H, typename... T>
+  requires(sizeof...(T) > 0)
+FdStream *ColorTuple<H, T...>::printElements(FdStream *stream) {
+  *stream << head;
+  return tail.printElements(stream);
+}
+
+template <typename T> FdStream *ColorTuple<T>::printElements(FdStream *stream) {
+  *stream << elt;
+  return stream;
+}
+
+template <typename... Ts> FdStream &FdStream::operator<<(Color<Ts...> x) {
+  *this << "\033[";
+  if (x.options.backgroundColor != BACKGROUND_COLORS::DEFAULT) {
+    *this << static_cast<int>(x.options.backgroundColor);
+
+    if (x.options.textColor != TEXT_COLORS::DEFAULT) {
+      *this << ";";
+    }
+  }
+  if (x.options.textColor != TEXT_COLORS::DEFAULT) {
+    *this << static_cast<int>(x.options.textColor);
+  }
+  *this << "m";
+  x.values.printElements(this);
+  *this << "\033[m";
+  return *this;
+}
 
 FdStream &FdStream::operator>>(i8 &out) {
   out = readInt(this->fd);

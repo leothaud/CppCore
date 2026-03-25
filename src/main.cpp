@@ -1,35 +1,14 @@
 import core;
-import ast;
-import frontend;
 
-core::Mutex mutex;
-
-struct X {
-  int x;
-  X(int x) : x(x) {}
-  ~X() {}
-  X &operator++() {
-    ++x;
-    return *this;
-  }
-  operator int() { return x; }
-};
-
-thread_local X local = 2;
-
-void f(u64 n) {
-  auto &logger = core::getThreadLogger();
-  logger.info("Before: ", local);
-  core::sleep(n);
-  ++local;
-  logger.info("After: ", local);
-  core::stdLogger.info("thread ", n, " finished.");
+int fTest() {
+  core::getThreadLogger()->info("Yo!");
+  core::sleep(2);
+  core::getThreadLogger()->info("End.");
+  return 0;
 }
 
 int main() {
-  int numThread = 48;
-  for (int i = 0; i < numThread; ++i) {
-    core::startThread<f>(i);
-  }
+  core::sout << "Yo " << core::getColor<core::TEXT_COLORS::RED>("toi") << " !\n"
+             << 0x123_x << "\n";
   return 0;
 }
