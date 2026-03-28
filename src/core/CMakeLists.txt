@@ -7,6 +7,7 @@ addModule(cidmolCore
   errors.cpp
   functions.cpp
   initializerList.cpp
+  ioUtils.cpp
   logger.cpp
   logicalResult.cpp
   map.cpp
@@ -23,6 +24,7 @@ addModule(cidmolCore
   threads.cpp
   traits.cpp
   uniquePtr.cpp
+  unmangler.cpp
   variant.cpp
   vector.cpp
   zip.cpp
