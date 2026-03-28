@@ -1,8 +1,10 @@
+
 addModule(cidmolCore
   allocs.cpp
   builtins.cpp
   core.cpp
   cstring.cpp
+  demangler.cpp
   elf64.cpp
   errors.cpp
   functions.cpp
@@ -24,7 +26,6 @@ addModule(cidmolCore
   threads.cpp
   traits.cpp
   uniquePtr.cpp
-  unmangler.cpp
   variant.cpp
   vector.cpp
   zip.cpp
