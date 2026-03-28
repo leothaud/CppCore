@@ -10,11 +10,11 @@ jobs:
       - name: Get Template Code
         uses: actions/checkout@v4
       - name: clang-format
-        uses: DoozyX/clang-format-lint-action@v0.18.2
+        uses: DoozyX/clang-format-lint-action@v0.20
         with:
           source: "./src"
           extensions: "cpp"
-          clangFormatVersion: 16
+          clangFormatVersion: 20
 
   build:
     name: Build and test
