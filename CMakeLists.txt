@@ -56,7 +56,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Doxygen REQUIRED)
+find_package(Doxygen)
 
 project(Cidmol LANGUAGES CXX ASM)
 
