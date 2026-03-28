@@ -19,6 +19,7 @@ jobs:
   build:
     name: Build and test
     runs-on: self-hosted
+    needs: lint
     container:
       image: leothaud/cidmol-build:latest
     # Request permissions to push to gh-pages branch.
