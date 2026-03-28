@@ -29,20 +29,16 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Get cidmol
-        uses: actions/checkout@v4
-        with:
-          path: "cidmol"
       - name: Debug build
         run: |
-          mkdir -p "$GITHUB_WORKSPACE/cidmol/debug-build"
-          cd "$GITHUB_WORKSPACE/cidmol/debug-build"
+          mkdir -p "$GITHUB_WORKSPACE/debug-build"
+          cd "$GITHUB_WORKSPACE/debug-build"
           cmake -G Ninja .. -DCMAKE_BUILD_TYPE=Debug
           cmake --build .
       - name: Release build
         run: |
-          mkdir -p "$GITHUB_WORKSPACE/cidmol/release-build"
-          cd "$GITHUB_WORKSPACE/cidmol/release-build"
+          mkdir -p "$GITHUB_WORKSPACE/release-build"
+          cd "$GITHUB_WORKSPACE/release-build"
           cmake -G Ninja .. -DCMAKE_BUILD_TYPE=Release
           cmake --build .
   deploy:
