@@ -18,41 +18,13 @@ jobs:
 
   build:
     name: Build and test
-    runs-on: ubuntu-latest
+    runs-on: archlinux-latest
+    container:
+      image: leothaud/cidmol-build:latest
     # Request permissions to push to gh-pages branch.
     permissions:
       contents: write
     steps:
-      - name: Configure Environment
-        run: |
-          sudo apt-get -y update
-          sudo apt-get install -y \
-            build-essential \
-            ninja-build \
-            cmake \
-            curl \
-            git \
-            grep \
-            libgtest-dev \
-            openssh-client \
-            python3 \
-            python3-setuptools \
-            python3-pip \
-            sudo \
-            zlib1g-dev \
-            libtinfo-dev \
-            libxml2-dev \
-            clang \
-            lld \
-            gawk \
-            libffi-dev \
-            graphviz \
-            xdot \
-            pkg-config \
-            libboost-system-dev \
-            libboost-python-dev \
-            libboost-filesystem-dev \
-            mold
       - name: Get cidmol
         uses: actions/checkout@v4
         with:
