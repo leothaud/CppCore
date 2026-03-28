@@ -25,6 +25,7 @@ jobs:
     needs: lint
     container:
       image: leothaud/cidmol-build:latest
+      options: --user $(id -u):$(id -g) 
     # Request permissions to push to gh-pages branch.
     permissions:
       contents: write
