@@ -1,6 +1,9 @@
 name: Check and build
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   lint:
@@ -42,3 +45,13 @@ jobs:
           cd "$GITHUB_WORKSPACE/cidmol/release-build"
           cmake -G Ninja .. -DCMAKE_BUILD_TYPE=Release
           cmake --build .
+  deploy:
+    runs-on: self-hosted
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - uses: DenverCoder1/doxygen-github-pages-action@v2.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          config_file: GitDoxyfile
