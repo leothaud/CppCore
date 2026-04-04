@@ -25,7 +25,7 @@ protected:
   int fd;
 
 public:
-  explicit FdStream(int fd) : fd(fd) {}
+  constexpr explicit FdStream(int fd) : fd(fd) {}
 
   FdStream &operator<<(const char *str) {
     write(fd, str);
