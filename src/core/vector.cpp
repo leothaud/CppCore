@@ -138,6 +138,13 @@ public:
     buffer[size++] = move(value);
   }
 
+  void clear() {
+    delete[] buffer;
+    capacity = defaultCapacity;
+    size = 0;
+    buffer = new T[defaultCapacity];
+  }
+
   //! Iterator over the vector buffer.
   class Iterator {
     T *buffer;
