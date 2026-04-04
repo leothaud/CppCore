@@ -169,6 +169,40 @@ public:
 
   Iterator begin() const { return Iterator(buffer, 0); }
   Iterator end() const { return Iterator(buffer, size); }
+
+  //! Iterator over the vector buffer.
+  class ReverseIterator {
+    T *buffer;
+    u64 index;
+
+  public:
+    ~ReverseIterator() = default;
+    ReverseIterator(T *buffer, u64 index) : buffer(buffer), index(index) {}
+    ReverseIterator(const ReverseIterator &other)
+        : buffer(other.buffer), index(other.index) {}
+    T &operator*() const { return buffer[index]; }
+    T *operator->() const { return &(buffer[index]); }
+    bool operator==(const ReverseIterator &other) const {
+      return (buffer == other.buffer) && (index == other.index);
+    }
+    bool operator!=(const ReverseIterator &other) const {
+      return !(*this == other);
+    }
+    ReverseIterator &operator++() {
+      --index;
+      return *this;
+    }
+
+    ReverseIterator operator+(int index) const {
+      ReverseIterator res = *this;
+      for (int i = 0; i < index; ++i)
+        --res;
+      return res;
+    }
+  };
+
+  ReverseIterator rbegin() const { return ReverseIterator(buffer, size - 1); }
+  ReverseIterator rend() const { return ReverseIterator(buffer, -1); }
 };
 
 } // namespace core
