@@ -60,6 +60,10 @@ find_package(Doxygen)
 
 project(Cidmol LANGUAGES CXX ASM)
 
+include(CTest)
+enable_testing()
+set(TEST_TARGETS "")
+
 if(DOXYGEN_FOUND)
   set(DOXYFILE_IN ${CMAKE_SOURCE_DIR}/Doxyfile.in)
   set(DOXYFILE_GEN ${CMAKE_BINARY_DIR}/Doxyfile)
@@ -114,7 +118,7 @@ function(addModule target)
   set_property(GLOBAL PROPERTY ${varName} "${srcs}")
 endfunction(addModule)
 
-function(addExecutable name main)
+function(addExecutableAux name main exclude)
   set(mods "")
   set(modSrcs "")
 
@@ -131,10 +135,47 @@ function(addExecutable name main)
   add_library(${libName})
   target_sources(${libName} PRIVATE ${modSrcs} PUBLIC FILE_SET cxx_modules TYPE CXX_MODULES BASE_DIRS ${PROJECT_SOURCE_DIR}/src FILES ${mods})
   target_compile_features(${libName} PUBLIC cxx_std_23)
-  add_executable(${name} ${CMAKE_CURRENT_SOURCE_DIR}/${main})
+
+  if(exclude)
+    add_executable(${name} EXCLUDE_FROM_ALL ${CMAKE_CURRENT_SOURCE_DIR}/${main})
+  else(exclude)
+    add_executable(${name} ${CMAKE_CURRENT_SOURCE_DIR}/${main})
+  endif(exclude)
+
   target_compile_features(${name} PUBLIC cxx_std_23)
   target_link_libraries(${name} PRIVATE ${libName})
   target_link_options(${name} PRIVATE -nostdlib -static)
+endfunction(addExecutableAux)
+
+function(addExecutable name main)
+  addExecutableAux(${name} ${main} OFF ${ARGN})
 endfunction(addExecutable)
 
+function(addTest main)
+  file(RELATIVE_PATH REL_PATH
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+  message(${REL_PATH})
+  addExecutableAux(${main} ${main} ON ${ARGN})
+  set_target_properties(${main} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${REL_PATH}"
+  )
+  add_test(NAME ${main} COMMAND ${main})
+  set_tests_properties(${main} PROPERTIES
+    FIXTURES_REQUIRED build
+  )
+  set_property(GLOBAL APPEND PROPERTY TEST_TARGETS ${main})
+endfunction(addTest)
+
 add_subdirectory(src)
+add_subdirectory(tests)
+
+get_property(testTargets GLOBAL PROPERTY TEST_TARGETS)
+add_test(NAME buildTests
+  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ${testTargets}
+)
+
+set_tests_properties(buildTests PROPERTIES
+  FIXTURES_SETUP build
+)

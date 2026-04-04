@@ -35,6 +35,7 @@ export import :stream;
 export import :string;
 export import :stringLiteral;
 export import :syscalls;
+export import :tests;
 export import :threads;
 export import :traits;
 export import :uniquePtr;

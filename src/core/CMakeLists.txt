@@ -23,6 +23,7 @@ addModule(cidmolCore
   string.cpp
   stringLiteral.cpp
   syscalls.cpp
+  tests.cpp
   threads.cpp
   traits.cpp
   uniquePtr.cpp
