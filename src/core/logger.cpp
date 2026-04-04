@@ -25,8 +25,8 @@ namespace core {
 export class Logger {
   FdStream *infoStream, *warningStream, *errorStream;
   bool labels;
-#ifdef CORE_THREAD
   bool shared;
+#ifdef CORE_THREAD
   Mutex lock;
 #endif
   void infoImpl(auto elt) { *infoStream << elt; }
@@ -36,10 +36,11 @@ export class Logger {
 public:
   Logger(const Logger &other)
       : infoStream(other.infoStream), warningStream(other.warningStream),
-        errorStream(other.errorStream), labels(other.labels)
+        errorStream(other.errorStream), labels(other.labels),
+        shared(other.shared)
 #ifdef CORE_THREAD
         ,
-        shared(other.shared), lock(other.lock)
+        lock(other.lock)
 #endif
   {
   }
@@ -49,8 +50,8 @@ public:
     warningStream = other.warningStream;
     errorStream = other.errorStream;
     labels = other.labels;
-#ifdef CORE_THREAD
     shared = other.shared;
+#ifdef CORE_THREAD
     lock = other.lock;
 #endif
     return *this;
@@ -59,10 +60,10 @@ public:
       : infoStream(core::move(other.infoStream)),
         warningStream(core::move(other.warningStream)),
         errorStream(core::move(other.errorStream)),
-        labels(core::move(other.labels))
+        labels(core::move(other.labels)), shared(core::move(other.shared))
 #ifdef CORE_THREAD
         ,
-        shared(core::move(other.shared)), lock(core::move(other.lock))
+        lock(core::move(other.lock))
 #endif
   {
   }
@@ -72,27 +73,18 @@ public:
     warningStream = core::move(other.warningStream);
     errorStream = core::move(other.errorStream);
     labels = core::move(other.labels);
-#ifdef CORE_THREAD
     shared = core::move(other.shared);
+#ifdef CORE_THREAD
     lock = core::move(other.lock);
 #endif
     return *this;
   }
 
   constexpr Logger(FdStream *infoStream, FdStream *warningStream,
-                   FdStream *errorStream,
-#ifdef CORE_THREAD
-                   bool shared = true,
-#endif
+                   FdStream *errorStream, bool shared = true,
                    bool labels = true)
       : infoStream(infoStream), warningStream(warningStream),
-        errorStream(errorStream), labels(labels)
-#ifdef CORE_THREAD
-        ,
-        shared(shared)
-#endif
-  {
-  }
+        errorStream(errorStream), labels(labels), shared(shared) {}
   constexpr Logger() : Logger(nullptr, nullptr, nullptr) {}
 
   template <typename... T> void info(T... elts) {
@@ -149,26 +141,26 @@ public:
 #endif
   }
 
-#ifdef CORE_THREAD
   bool isShared() const { return shared; }
   void setShared() { shared = true; }
   void setShared(bool shared) { this->shared = shared; }
   void unsetShared() { shared = false; }
-#endif
 };
 
 //! Standard output logger. infos/warnings -> stdout. errors -> stderr
 export Logger stdLogger;
 
-#ifdef CORE_THREAD
 //! Get a thread-local logger. Initial value is stdLogger, but can be changed.
 export [[gnu::always_inline]] Logger *&getThreadLogger() {
+#ifdef CORE_THREAD
   static thread_local Logger *logger = &stdLogger;
+#else
+  static Logger *logger = &stdLogger;
+#endif
   return logger;
 }
 //! Reset the thread logger value to stdLogger
 export void resetThreadLogger() { getThreadLogger() = &stdLogger; }
-#endif
 
 //! Initialize stdLooger, necessary because of global variable initialisation
 //! order.
