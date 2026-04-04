@@ -206,6 +206,11 @@ public:
       return false;
     return streq(buffer, prefix.buffer, prefix.size - 1);
   }
+  bool endsWith(char c) {
+    if (size < 2)
+      return false;
+    return buffer[size - 2] == c;
+  }
 
 public:
   Iterator begin() { return Iterator(this, 0); }
