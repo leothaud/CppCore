@@ -63,7 +63,6 @@ cmake_host_system_information(RESULT totalRam
 )
 
 project(Cidmol LANGUAGES CXX ASM)
-message("RAM: ${totalRam}")
 
 include(CTest)
 enable_testing()
@@ -161,7 +160,6 @@ function(addTest main)
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
   )
-  message(${REL_PATH})
   addExecutableAux(${main} ${main} ON ${ARGN})
   set_target_properties(${main} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${REL_PATH}"
@@ -181,6 +179,5 @@ add_test(NAME buildTests
   COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ${testTargets}
 )
 
-set_tests_properties(buildTests PROPERTIES
-  FIXTURES_SETUP build
-)
+set_tests_properties(buildTests PROPERTIES FIXTURES_SETUP build)
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure)
