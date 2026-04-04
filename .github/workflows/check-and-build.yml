@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: leothaud/cidmol-build:latest
-      options: --user 1002:1002
     steps:
       - name: Get Template Code
         uses: actions/checkout@v4
