@@ -33,6 +33,7 @@ struct DemangledSymbol {
     CHAIN,
     MODULE,
     MODULEBASE,
+    OPERATOR,
     SYMBOL,
     PTR,
     RVAL,
@@ -41,6 +42,7 @@ struct DemangledSymbol {
     CONST,
     VOLATILE,
     TEMPLATE,
+    TEMPLATEARG,
     STD,
     VIRTUAL,
     CONSTRUCTOR,
@@ -56,9 +58,30 @@ struct DemangledSymbol {
   bool hasTemplate() const;
   LogicalResult<String> getLastName() const;
   virtual ~DemangledSymbol() = default;
-  String dump() const;
+  [[clang::noinline, gnu::used]] String dump() const;
   bool isConstFun() const;
   bool isConstructor() const;
+  bool isOperator() const;
+};
+
+struct OperatorSymbol : public DemangledSymbol {
+  UniquePtr<DemangledSymbol> base;
+  OperatorSymbol(UniquePtr<DemangledSymbol> base)
+      : DemangledSymbol(OPERATOR), base(move(base)) {}
+  String dump() const { return "OPERATOR{" + base->dump() + "}"; }
+  String toString(bool printConst = true) const {
+    if (base->t == BASE) {
+      return "operator" + base->toString(printConst);
+    }
+    return "operator " + base->toString(printConst);
+  }
+  bool isVoidType() const { return false; }
+  UniquePtr<DemangledSymbol> clone() const {
+    return new OperatorSymbol(base->clone());
+  }
+  bool hasTemplate() const { return base->hasTemplate(); }
+  bool isConstFun() const { return base->isConstFun(); }
+  bool isOperator() const { return true; }
 };
 
 struct VirtualSymbol : public DemangledSymbol {
@@ -93,6 +116,7 @@ struct VirtualSymbol : public DemangledSymbol {
   bool hasTemplate() const { return base->hasTemplate(); }
   String dump() const { return "VIRTUAL{" + base->dump() + "}"; }
   bool isConstFun() const { return false; }
+  bool isOperator() const { return false; }
 };
 
 struct ConstructorSymbol : public DemangledSymbol {
@@ -112,12 +136,15 @@ struct StdSymbol : public DemangledSymbol {
   bool hasTemplate() const { return false; }
   String dump() const { return "STD"; }
   bool isConstFun() const { return false; }
+  bool isOperator() const { return false; }
 };
 
 struct BaseSymbol : public DemangledSymbol {
   String name;
-  bool constructor_;
-  BaseSymbol(String name) : DemangledSymbol(BASE), name(name) {}
+  bool constructor_ = false;
+  BaseSymbol(String name) : DemangledSymbol(BASE), name(name) {
+    assert(name.length() < 100);
+  }
   String toString(bool = true) const { return name; }
   bool isVoidType() const { return false; }
   BaseSymbol *clone() const { return new BaseSymbol(name); }
@@ -126,11 +153,11 @@ struct BaseSymbol : public DemangledSymbol {
   String dump() const { return "BASE{" + name + "}"; }
   bool isConstFun() const { return false; }
   bool isConstructor() const { return constructor_; }
+  bool isOperator() const { return false; }
 };
 
 struct BuiltinSymbol : public DemangledSymbol {
   String name;
-  bool constructor_;
   BuiltinSymbol(String name) : DemangledSymbol(BUILTIN), name(name) {}
   String toString(bool = true) const { return name; }
   bool isVoidType() const { return name == "void"; }
@@ -139,7 +166,8 @@ struct BuiltinSymbol : public DemangledSymbol {
   LogicalResult<String> getLastName() const { return name; }
   String dump() const { return "BUILTIN{" + name + "}"; }
   bool isConstFun() const { return false; }
-  bool isConstructor() const { return constructor_; }
+  bool isConstructor() const { return false; }
+  bool isOperator() const { return false; }
 };
 
 struct RequireSymbol : public DemangledSymbol {
@@ -170,6 +198,7 @@ struct RequireSymbol : public DemangledSymbol {
     return result;
   }
   bool isConstFun() const { return false; }
+  bool isOperator() const { return false; }
 };
 
 struct TemplateSymbol : public DemangledSymbol {
@@ -215,6 +244,36 @@ struct TemplateSymbol : public DemangledSymbol {
     return result;
   }
   bool isConstFun() const { return false; }
+  bool isOperator() const { return false; }
+};
+
+struct TemplateArgumentSymbol : public DemangledSymbol {
+  Vector<UniquePtr<DemangledSymbol>> &templates;
+  bool printLimits = true;
+  u64 id;
+  TemplateArgumentSymbol(Vector<UniquePtr<DemangledSymbol>> &templates, u64 id)
+      : DemangledSymbol(TEMPLATEARG), templates(templates), id(id) {}
+
+  String toString(bool printConst) const {
+    assert(templates.length() > id);
+    auto &resolved = templates[id];
+    if (resolved->t == TEMPLATE) {
+      auto *tmplt = static_cast<TemplateSymbol *>(resolved.getRaw());
+      auto save = tmplt->printLimits;
+      tmplt->printLimits = printLimits;
+      auto result = tmplt->toString(printConst);
+      tmplt->printLimits = save;
+      return result;
+    } else {
+      return resolved->toString(printConst);
+    }
+  }
+  String dump() const { return "TEMPLATEARGUMENT{" + String::of(id) + "}"; }
+  TemplateArgumentSymbol *clone() const {
+    auto *res = new TemplateArgumentSymbol(templates, id);
+    return res;
+  }
+  bool isOperator() const { return false; }
 };
 
 struct ChainSymbol : public DemangledSymbol {
@@ -274,6 +333,14 @@ struct ChainSymbol : public DemangledSymbol {
       return false;
     return parts[parts.length() - 1]->isConstructor();
   }
+  bool isOperator() const {
+    for (auto it = parts.rbegin(); it != parts.rend(); ++it) {
+      if ((*it)->t != TEMPLATE) {
+        return (*it)->isOperator();
+      }
+    }
+    return false;
+  }
 };
 
 struct ModuleBaseSymbol : public DemangledSymbol {
@@ -283,6 +350,7 @@ struct ModuleBaseSymbol : public DemangledSymbol {
   ModuleBaseSymbol *clone() const { return new ModuleBaseSymbol(name); }
   bool hasTemplate() const { return false; }
   String dump() const { return "MODULEBASE{" + name + "}"; }
+  bool isOperator() const { return false; }
 };
 
 struct ModuleSymbol : public DemangledSymbol {
@@ -303,6 +371,7 @@ struct ModuleSymbol : public DemangledSymbol {
   }
   bool isConstFun() const { return inner->isConstFun(); }
   bool isConstructor() const { return inner->isConstructor(); }
+  bool isOperator() const { return inner->isOperator(); }
 };
 
 struct Symbol : public DemangledSymbol {
@@ -353,6 +422,7 @@ struct Symbol : public DemangledSymbol {
   }
   bool isConstFun() const { return isConst || name->isConstFun(); }
   bool isConstructor() const { return name->isConstructor(); }
+  bool isOperator() const { return name->isOperator(); }
 };
 
 struct PtrSymbol : public DemangledSymbol {
@@ -371,6 +441,7 @@ struct PtrSymbol : public DemangledSymbol {
     return "PTR{" + inner->dump() + ", " + String::of(depth) + "}";
   }
   bool isConstFun() const { return false; }
+  bool isOperator() const { return false; }
 };
 
 struct RvalSymbol : public DemangledSymbol {
@@ -382,6 +453,7 @@ struct RvalSymbol : public DemangledSymbol {
   bool hasTemplate() const { return false; }
   String dump() const { return "RVAL{" + inner->dump() + "}"; }
   bool isConstFun() const { return false; }
+  bool isOperator() const { return false; }
 };
 
 struct LvalSymbol : public DemangledSymbol {
@@ -393,6 +465,7 @@ struct LvalSymbol : public DemangledSymbol {
   bool hasTemplate() const { return false; }
   String dump() const { return "LVAL{" + inner->dump() + "}"; }
   bool isConstFun() const { return false; }
+  bool isOperator() const { return false; }
 };
 
 struct FunTypeSymbol : public DemangledSymbol {
@@ -436,6 +509,7 @@ struct FunTypeSymbol : public DemangledSymbol {
     return result + "}";
   }
   bool isConstFun() const { return false; }
+  bool isOperator() const { return false; }
 };
 
 struct ConstSymbol : public DemangledSymbol {
@@ -452,6 +526,7 @@ struct ConstSymbol : public DemangledSymbol {
   String dump() const { return "CONST{" + inner->dump() + "}"; }
   bool isConstFun() const { return true; }
   bool isConstructor() const { return inner->isConstructor(); }
+  bool isOperator() const { return inner->isOperator(); }
 };
 struct VolatileSymbol : public DemangledSymbol {
   UniquePtr<DemangledSymbol> inner;
@@ -466,6 +541,7 @@ struct VolatileSymbol : public DemangledSymbol {
   String dump() const { return "VOLATILE{" + inner->dump() + "}"; }
   bool isConstFun() const { return inner->isConstFun(); }
   bool isConstructor() const { return inner->isConstructor(); }
+  bool isOperator() const { return inner->isOperator(); }
 };
 
 struct LambdaSymbol : public DemangledSymbol {
@@ -510,8 +586,53 @@ struct LambdaSymbol : public DemangledSymbol {
     return result + ", " + String::of(index) + "}";
   }
   bool isConstFun() const { return false; }
+  bool isOperator() const { return false; }
 };
 
+bool DemangledSymbol::isOperator() const {
+  switch (t) {
+  case BASE:
+    return static_cast<const BaseSymbol *>(this)->isOperator();
+  case BUILTIN:
+    return static_cast<const BuiltinSymbol *>(this)->isOperator();
+  case CHAIN:
+    return static_cast<const ChainSymbol *>(this)->isOperator();
+  case MODULE:
+    return static_cast<const ModuleSymbol *>(this)->isOperator();
+  case MODULEBASE:
+    return static_cast<const ModuleBaseSymbol *>(this)->isOperator();
+  case OPERATOR:
+    return static_cast<const OperatorSymbol *>(this)->isOperator();
+  case SYMBOL:
+    return static_cast<const Symbol *>(this)->isOperator();
+  case PTR:
+    return static_cast<const PtrSymbol *>(this)->isOperator();
+  case RVAL:
+    return static_cast<const RvalSymbol *>(this)->isOperator();
+  case LVAL:
+    return static_cast<const LvalSymbol *>(this)->isOperator();
+  case FUNTYPE:
+    return static_cast<const FunTypeSymbol *>(this)->isOperator();
+  case CONST:
+    return static_cast<const ConstSymbol *>(this)->isOperator();
+  case VOLATILE:
+    return static_cast<const VolatileSymbol *>(this)->isOperator();
+  case TEMPLATE:
+    return static_cast<const TemplateSymbol *>(this)->isOperator();
+  case TEMPLATEARG:
+    return static_cast<const TemplateArgumentSymbol *>(this)->isOperator();
+  case STD:
+    return static_cast<const StdSymbol *>(this)->isOperator();
+  case VIRTUAL:
+    return static_cast<const VirtualSymbol *>(this)->isOperator();
+  case LAMBDA:
+    return static_cast<const LambdaSymbol *>(this)->isOperator();
+  case REQUIRE:
+    return static_cast<const RequireSymbol *>(this)->isOperator();
+  default:
+    trap();
+  }
+}
 LogicalResult<String> DemangledSymbol::getLastName() const {
   switch (t) {
   case BASE:
@@ -565,6 +686,8 @@ bool DemangledSymbol::isConstFun() const {
     return static_cast<const LambdaSymbol *>(this)->isConstFun();
   case CONST:
     return static_cast<const ConstSymbol *>(this)->isConstFun();
+  case OPERATOR:
+    return static_cast<const OperatorSymbol *>(this)->isConstFun();
   default:
     trap();
   }
@@ -606,6 +729,8 @@ bool DemangledSymbol::hasTemplate() const {
     return static_cast<const VirtualSymbol *>(this)->hasTemplate();
   case LAMBDA:
     return static_cast<const LambdaSymbol *>(this)->hasTemplate();
+  case OPERATOR:
+    return static_cast<const OperatorSymbol *>(this)->hasTemplate();
   default:
     trap();
   }
@@ -647,6 +772,10 @@ UniquePtr<DemangledSymbol> DemangledSymbol::clone() const {
     return static_cast<const VirtualSymbol *>(this)->clone();
   case LAMBDA:
     return static_cast<const LambdaSymbol *>(this)->clone();
+  case TEMPLATEARG:
+    return static_cast<const TemplateArgumentSymbol *>(this)->clone();
+  case OPERATOR:
+    return static_cast<const OperatorSymbol *>(this)->clone();
   default:
     trap();
   }
@@ -660,10 +789,10 @@ String PtrSymbol::toString(bool) const {
     for (int i = 0; i < depth; ++i)
       result += "*";
     if ((fun->arguments.length() == 1) && fun->arguments[0]->isVoidType()) {
-      result += ") ()";
+      result += ")()";
       return result;
     } else {
-      result += ") (";
+      result += ")(";
       bool first = true;
       for (auto &a : fun->arguments) {
         if (!first)
@@ -774,6 +903,9 @@ String DemangledSymbol::toString(bool printConst) const {
     return static_cast<const VolatileSymbol *>(this)->toString(printConst);
   case TEMPLATE:
     return static_cast<const TemplateSymbol *>(this)->toString(printConst);
+  case TEMPLATEARG:
+    return static_cast<const TemplateArgumentSymbol *>(this)->toString(
+        printConst);
   case REQUIRE:
     return static_cast<const RequireSymbol *>(this)->toString();
   case STD:
@@ -782,6 +914,8 @@ String DemangledSymbol::toString(bool printConst) const {
     return static_cast<const VirtualSymbol *>(this)->toString(printConst);
   case LAMBDA:
     return static_cast<const LambdaSymbol *>(this)->toString(printConst);
+  case OPERATOR:
+    return static_cast<const OperatorSymbol *>(this)->toString(printConst);
   default:
     trap();
   }
@@ -815,6 +949,8 @@ String DemangledSymbol::dump() const {
     return static_cast<const VolatileSymbol *>(this)->dump();
   case TEMPLATE:
     return static_cast<const TemplateSymbol *>(this)->dump();
+  case TEMPLATEARG:
+    return static_cast<const TemplateArgumentSymbol *>(this)->dump();
   case REQUIRE:
     return static_cast<const RequireSymbol *>(this)->dump();
   case STD:
@@ -823,6 +959,8 @@ String DemangledSymbol::dump() const {
     return static_cast<const VirtualSymbol *>(this)->dump();
   case LAMBDA:
     return static_cast<const LambdaSymbol *>(this)->dump();
+  case OPERATOR:
+    return static_cast<const OperatorSymbol *>(this)->dump();
   default:
     trap();
   }
@@ -851,6 +989,8 @@ bool DemangledSymbol::isConstructor() const {
   case VOLATILE: {
     return static_cast<const VolatileSymbol *>(this)->isConstructor();
   }
+  case OPERATOR:
+    return false;
   default: {
     return false;
   }
@@ -923,54 +1063,70 @@ void parseSize(u64 &size, const char *(&ptr)) {
 template <bool END_ON_E = false>
 LogicalResult<UniquePtr<DemangledSymbol>>
 demangle(const char *(&ptr), Vector<UniquePtr<DemangledSymbol>> &substitutions,
-         Vector<UniquePtr<DemangledSymbol>> &templates);
+
+         Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+         Vector<UniquePtr<DemangledSymbol>> &writeTemplates);
 LogicalResult<UniquePtr<DemangledSymbol>>
 demangleModule(const char *(&ptr),
                Vector<UniquePtr<DemangledSymbol>> &substitutions,
-               Vector<UniquePtr<DemangledSymbol>> &templates);
+
+               Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+               Vector<UniquePtr<DemangledSymbol>> &writeTemplates);
 LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     const char *(&ptr), Vector<UniquePtr<DemangledSymbol>> &substitutions,
-    Vector<UniquePtr<DemangledSymbol>> &templates, bool &isSubstitution);
+    Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+    Vector<UniquePtr<DemangledSymbol>> &writeTemplates, bool &isSubstitution);
 LogicalResult<UniquePtr<DemangledSymbol>> demangleType(
     const char *(&ptr), Vector<UniquePtr<DemangledSymbol>> &substitutions,
-    Vector<UniquePtr<DemangledSymbol>> &templates, bool &isSubstitution,
+    Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+    Vector<UniquePtr<DemangledSymbol>> &writeTemplates, bool &isSubstitution,
     Vector<UniquePtr<DemangledSymbol>> *currentTemplates = nullptr);
 LogicalResult<UniquePtr<DemangledSymbol>>
 demangleTemplate(const char *(&ptr),
                  Vector<UniquePtr<DemangledSymbol>> &substitutions,
-                 Vector<UniquePtr<DemangledSymbol>> &templates);
+
+                 Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+                 Vector<UniquePtr<DemangledSymbol>> &writeTemplates);
 template <bool isInRequire = false>
 LogicalResult<UniquePtr<DemangledSymbol>>
 demangleExpression(const char *(&ptr),
                    Vector<UniquePtr<DemangledSymbol>> &substitutions,
-                   Vector<UniquePtr<DemangledSymbol>> &templates);
+
+                   Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+                   Vector<UniquePtr<DemangledSymbol>> &writeTemplates);
 
 LogicalResult<UniquePtr<DemangledSymbol>>
 demangleNestedName(const char *(&ptr),
                    Vector<UniquePtr<DemangledSymbol>> &substitutions,
-                   Vector<UniquePtr<DemangledSymbol>> &templates) {
+
+                   Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+                   Vector<UniquePtr<DemangledSymbol>> &writeTemplates) {
   if (*ptr == 'K') {
-    auto inner = demangleNestedName(++ptr, substitutions, templates);
+    auto inner =
+        demangleNestedName(++ptr, substitutions, readTemplates, writeTemplates);
     if (inner.failed())
       return inner;
     return new ConstSymbol(move(*inner));
   }
   auto *result = new ChainSymbol;
   bool wasSubstitution = true;
+  Vector<UniquePtr<DemangledSymbol>> innerTemplates;
   while (*ptr != 'E') {
+    innerTemplates.clear();
     if (!wasSubstitution)
       substitutions.pushBack(result->clone());
     wasSubstitution = false;
     if (*ptr == 'W') {
-      auto mod = demangleModule(++ptr, substitutions, templates);
+      Vector<UniquePtr<DemangledSymbol>> dummy;
+      auto mod = demangleModule(++ptr, substitutions, readTemplates, dummy);
       if (mod.failed()) {
         delete result;
         return mod;
       }
       result->addPart(move(*mod));
     } else {
-      auto demangledName =
-          demangleName(ptr, substitutions, templates, wasSubstitution);
+      auto demangledName = demangleName(ptr, substitutions, readTemplates,
+                                        innerTemplates, wasSubstitution);
       if (demangledName.failed()) {
         delete result;
         return demangledName;
@@ -1007,6 +1163,9 @@ demangleNestedName(const char *(&ptr),
       }
     }
   }
+  for (auto &tmplt : innerTemplates) {
+    writeTemplates.pushBack(move(tmplt));
+  }
   ++ptr;
   return result;
 }
@@ -1025,7 +1184,8 @@ printSubstitution(Vector<UniquePtr<DemangledSymbol>> &substitutions) {
 
 LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     const char *(&ptr), Vector<UniquePtr<DemangledSymbol>> &substitutions,
-    Vector<UniquePtr<DemangledSymbol>> &templates, bool &isSubstitution) {
+    Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+    Vector<UniquePtr<DemangledSymbol>> &writeTemplates, bool &isSubstitution) {
   switch (*ptr) {
   case 'a': {
     const char *savePtr = ptr;
@@ -1033,22 +1193,22 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'a':
       ++ptr;
-      return new BuiltinSymbol("operator&&");
+      return new OperatorSymbol(new BaseSymbol("&&"));
     case 'd':
       ++ptr;
-      return new BuiltinSymbol("operator&");
+      return new OperatorSymbol(new BaseSymbol("&"));
     case 'n':
       ++ptr;
-      return new BuiltinSymbol("operator&");
+      return new OperatorSymbol(new BaseSymbol("&"));
     case 'N':
       ++ptr;
-      return new BuiltinSymbol("operator&=");
+      return new OperatorSymbol(new BaseSymbol("&="));
     case 'S':
       ++ptr;
-      return new BuiltinSymbol("operator=");
+      return new OperatorSymbol(new BaseSymbol("="));
     case 'w':
       ++ptr;
-      return new BuiltinSymbol("operatorco_await");
+      return new OperatorSymbol(new BaseSymbol("co_await"));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1062,20 +1222,21 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'l':
       ++ptr;
-      return new BuiltinSymbol("operator()");
+      return new OperatorSymbol(new BaseSymbol("()"));
     case 'm':
       ++ptr;
-      return new BuiltinSymbol("operator,");
+      return new OperatorSymbol(new BaseSymbol(","));
     case 'o':
       ++ptr;
-      return new BuiltinSymbol("operator~");
+      return new OperatorSymbol(new BaseSymbol("~"));
     case 'v': {
       ++ptr;
       bool useless;
-      auto to = demangleType(ptr, substitutions, templates, useless);
+      auto to = demangleType(ptr, substitutions, readTemplates, writeTemplates,
+                             useless);
       if (to.failed())
         return to;
-      auto *res = new BuiltinSymbol("operator" + (*to)->toString());
+      auto *res = new OperatorSymbol((*to)->clone());
       return res;
     }
     default: {
@@ -1091,19 +1252,19 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'a':
       ++ptr;
-      return new BuiltinSymbol("operatordelete[]");
+      return new OperatorSymbol(new BaseSymbol(" delete[]"));
     case 'e':
       ++ptr;
-      return new BuiltinSymbol("operator*");
+      return new OperatorSymbol(new BaseSymbol("*"));
     case 'l':
       ++ptr;
-      return new BuiltinSymbol("operatordelete");
+      return new OperatorSymbol(new BaseSymbol(" delete"));
     case 'v':
       ++ptr;
-      return new BuiltinSymbol("operator/");
+      return new OperatorSymbol(new BaseSymbol("/"));
     case 'V':
       ++ptr;
-      return new BuiltinSymbol("operator/=");
+      return new OperatorSymbol(new BaseSymbol("/="));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1117,13 +1278,13 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'o':
       ++ptr;
-      return new BuiltinSymbol("operator^");
+      return new OperatorSymbol(new BaseSymbol("^"));
     case 'O':
       ++ptr;
-      return new BuiltinSymbol("operator^=");
+      return new OperatorSymbol(new BaseSymbol("^="));
     case 'q':
       ++ptr;
-      return new BuiltinSymbol("operator==");
+      return new OperatorSymbol(new BaseSymbol("=="));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1137,10 +1298,10 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'e':
       ++ptr;
-      return new BuiltinSymbol("operator>=");
+      return new OperatorSymbol(new BaseSymbol(">="));
     case 't':
       ++ptr;
-      return new BuiltinSymbol("operator>");
+      return new OperatorSymbol(new BaseSymbol(">"));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1154,7 +1315,7 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'x':
       ++ptr;
-      return new BuiltinSymbol("operator[]");
+      return new OperatorSymbol(new BaseSymbol("[]"));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1168,26 +1329,26 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'e':
       ++ptr;
-      return new BuiltinSymbol("operator<=");
+      return new OperatorSymbol(new BaseSymbol("<="));
     case 'i': {
       ++ptr;
       u64 size;
       parseSize(size, ptr);
-      String op = "\"\"";
+      String op = "\"\" ";
       for (u64 i = 0; i < size; ++i, ++ptr) {
         op += *ptr;
       }
-      return new BuiltinSymbol("operator" + op);
+      return new OperatorSymbol(new BaseSymbol(op));
     }
     case 's':
       ++ptr;
-      return new BuiltinSymbol("operator<<");
+      return new OperatorSymbol(new BaseSymbol("<<"));
     case 'S':
       ++ptr;
-      return new BuiltinSymbol("operator<<=");
+      return new OperatorSymbol(new BaseSymbol("<<="));
     case 't':
       ++ptr;
-      return new BuiltinSymbol("operator<");
+      return new OperatorSymbol(new BaseSymbol("<"));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1201,19 +1362,19 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'i':
       ++ptr;
-      return new BuiltinSymbol("operator-");
+      return new OperatorSymbol(new BaseSymbol("-"));
     case 'I':
       ++ptr;
-      return new BuiltinSymbol("operator-=");
+      return new OperatorSymbol(new BaseSymbol("-="));
     case 'l':
       ++ptr;
-      return new BuiltinSymbol("operator*");
+      return new OperatorSymbol(new BaseSymbol("*"));
     case 'L':
       ++ptr;
-      return new BuiltinSymbol("operator*=");
+      return new OperatorSymbol(new BaseSymbol("*="));
     case 'm':
       ++ptr;
-      return new BuiltinSymbol("operator--");
+      return new OperatorSymbol(new BaseSymbol("--"));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1227,19 +1388,19 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'a':
       ++ptr;
-      return new BuiltinSymbol("operatornew[]");
+      return new OperatorSymbol(new BaseSymbol(" new[]"));
     case 'e':
       ++ptr;
-      return new BuiltinSymbol("operator!=");
+      return new OperatorSymbol(new BaseSymbol("!="));
     case 'g':
       ++ptr;
-      return new BuiltinSymbol("operator-");
+      return new OperatorSymbol(new BaseSymbol("-"));
     case 't':
       ++ptr;
-      return new BuiltinSymbol("operator!");
+      return new OperatorSymbol(new BaseSymbol("!"));
     case 'w':
       ++ptr;
-      return new BuiltinSymbol("operatornew");
+      return new OperatorSymbol(new BaseSymbol(" new"));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1253,13 +1414,13 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'o':
       ++ptr;
-      return new BuiltinSymbol("operator||");
+      return new OperatorSymbol(new BaseSymbol("||"));
     case 'r':
       ++ptr;
-      return new BuiltinSymbol("operator|");
+      return new OperatorSymbol(new BaseSymbol("|"));
     case 'R':
       ++ptr;
-      return new BuiltinSymbol("operator|=");
+      return new OperatorSymbol(new BaseSymbol("|="));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1273,22 +1434,22 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'l':
       ++ptr;
-      return new BuiltinSymbol("operator+");
+      return new OperatorSymbol(new BaseSymbol("+"));
     case 'L':
       ++ptr;
-      return new BuiltinSymbol("operator+=");
+      return new OperatorSymbol(new BaseSymbol("+="));
     case 'm':
       ++ptr;
-      return new BuiltinSymbol("operator->*");
+      return new OperatorSymbol(new BaseSymbol("->*"));
     case 'p':
       ++ptr;
-      return new BuiltinSymbol("operator++");
+      return new OperatorSymbol(new BaseSymbol("++"));
     case 's':
       ++ptr;
-      return new BuiltinSymbol("operator+");
+      return new OperatorSymbol(new BaseSymbol("+"));
     case 't':
       ++ptr;
-      return new BuiltinSymbol("operator->");
+      return new OperatorSymbol(new BaseSymbol("->"));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1302,7 +1463,7 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'u':
       ++ptr;
-      return new BuiltinSymbol("operator?");
+      return new OperatorSymbol(new BaseSymbol("?"));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1316,16 +1477,16 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 'm':
       ++ptr;
-      return new BuiltinSymbol("operator%");
+      return new OperatorSymbol(new BaseSymbol("%"));
     case 'M':
       ++ptr;
-      return new BuiltinSymbol("operator%=");
+      return new OperatorSymbol(new BaseSymbol("%="));
     case 's':
       ++ptr;
-      return new BuiltinSymbol("operator>>");
+      return new OperatorSymbol(new BaseSymbol(">>"));
     case 'S':
       ++ptr;
-      return new BuiltinSymbol("operator>>=");
+      return new OperatorSymbol(new BaseSymbol(">>="));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1339,7 +1500,7 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     switch (*ptr) {
     case 's':
       ++ptr;
-      return new BuiltinSymbol("operator<=>");
+      return new OperatorSymbol(new BaseSymbol("<=>"));
     default: {
       ptr = savePtr;
       goto defaultDemangle;
@@ -1348,21 +1509,25 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     break;
   }
   case 'W': {
-    return demangleModule(++ptr, substitutions, templates);
+    return demangleModule(++ptr, substitutions, readTemplates, writeTemplates);
   }
   case 'S': {
     ++ptr;
     if (*ptr == 't') {
       ++ptr;
+      isSubstitution = true;
       return new StdSymbol;
     } else {
       u64 index;
       parseSubstitutionIndex(index, ptr);
       assert(substitutions.length() > index);
+      // if (index == 8)
+      //   __builtin_debugtrap();
       auto entry = substitutions[index]->clone();
       if (entry->t == DemangledSymbol::MODULEBASE) {
         bool useless;
-        auto next = demangleName(ptr, substitutions, templates, useless);
+        auto next = demangleName(ptr, substitutions, readTemplates,
+                                 writeTemplates, useless);
         if (next.failed())
           return next;
         auto *res = new ModuleSymbol(move(*next), move(entry));
@@ -1375,7 +1540,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     }
   }
   case 'I': {
-    return demangleTemplate(++ptr, substitutions, templates);
+    return demangleTemplate(++ptr, substitutions, readTemplates,
+                            writeTemplates);
   }
   case 'T': {
     auto *savePtr = ptr;
@@ -1384,7 +1550,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     case 'V': {
       ++ptr;
       bool useless;
-      auto type = demangleType(ptr, substitutions, templates, useless);
+      auto type = demangleType(ptr, substitutions, readTemplates,
+                               writeTemplates, useless);
       if (type.failed())
         return type;
       return new VirtualSymbol(VirtualSymbol::VTABLE, move(*type));
@@ -1392,7 +1559,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     case 'T': {
       ++ptr;
       bool useless;
-      auto type = demangleType(ptr, substitutions, templates, useless);
+      auto type = demangleType(ptr, substitutions, readTemplates,
+                               writeTemplates, useless);
       if (type.failed())
         return type;
       return new VirtualSymbol(VirtualSymbol::VTT, move(*type));
@@ -1400,7 +1568,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     case 'I': {
       ++ptr;
       bool useless;
-      auto type = demangleType(ptr, substitutions, templates, useless);
+      auto type = demangleType(ptr, substitutions, readTemplates,
+                               writeTemplates, useless);
       if (type.failed())
         return type;
       return new VirtualSymbol(VirtualSymbol::TYPEINFO, move(*type));
@@ -1408,7 +1577,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     case 'S': {
       ++ptr;
       bool useless;
-      auto type = demangleType(ptr, substitutions, templates, useless);
+      auto type = demangleType(ptr, substitutions, readTemplates,
+                               writeTemplates, useless);
       if (type.failed())
         return type;
       return new VirtualSymbol(VirtualSymbol::TYPEINFO_NAME, move(*type));
@@ -1453,7 +1623,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
   }
   case 'Z': {
     ++ptr;
-    auto inner = demangle<true>(ptr, substitutions, templates);
+    auto inner =
+        demangle<true>(ptr, substitutions, readTemplates, writeTemplates);
     if (inner.failed())
       return inner;
     if (*ptr != 'E') {
@@ -1462,7 +1633,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     }
     ++ptr;
     bool useless;
-    auto name = demangleName(ptr, substitutions, templates, useless);
+    auto name = demangleName(ptr, substitutions, readTemplates, writeTemplates,
+                             useless);
     if (name.failed())
       return name;
     auto *result = new ChainSymbol;
@@ -1472,7 +1644,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
   }
   case 'N': {
     ++ptr;
-    return demangleNestedName(ptr, substitutions, templates);
+    return demangleNestedName(ptr, substitutions, readTemplates,
+                              writeTemplates);
   }
   case 'U': {
     auto *savePtr = ptr;
@@ -1483,7 +1656,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
       auto *lambda = new LambdaSymbol;
       while (*ptr != 'E') {
         bool useless;
-        auto t = demangleType(ptr, substitutions, templates, useless);
+        auto t = demangleType(ptr, substitutions, readTemplates, writeTemplates,
+                              useless);
         if (t.failed()) {
           delete lambda;
           return t;
@@ -1519,7 +1693,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
     case 'V': {
       ++ptr;
       bool useless;
-      auto inner = demangleName(ptr, substitutions, templates, useless);
+      auto inner = demangleName(ptr, substitutions, readTemplates,
+                                writeTemplates, useless);
       if (inner.failed())
         return inner;
       return new VirtualSymbol(VirtualSymbol::GUARD, move(*inner));
@@ -1547,7 +1722,6 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
       name += *ptr;
     }
     auto *res = new BaseSymbol(name);
-    // substitutions.pushBack(res->clone());
     return res;
   }
   }
@@ -1556,7 +1730,9 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleName(
 LogicalResult<UniquePtr<DemangledSymbol>>
 demangleModule(const char *(&ptr),
                Vector<UniquePtr<DemangledSymbol>> &substitutions,
-               Vector<UniquePtr<DemangledSymbol>> &templates) {
+
+               Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+               Vector<UniquePtr<DemangledSymbol>> &writeTemplates) {
   u64 size;
   parseSize(size, ptr);
   if (size == 0) {
@@ -1574,7 +1750,8 @@ demangleModule(const char *(&ptr),
   auto *moduleBase = new ModuleBaseSymbol(moduleName);
   substitutions.pushBack(moduleBase->clone());
   bool useless;
-  auto base = demangleName(ptr, substitutions, templates, useless);
+  auto base =
+      demangleName(ptr, substitutions, readTemplates, writeTemplates, useless);
   if (base.failed()) {
     return base;
   }
@@ -1583,14 +1760,16 @@ demangleModule(const char *(&ptr),
 
 LogicalResult<UniquePtr<DemangledSymbol>> demangleType(
     const char *(&ptr), Vector<UniquePtr<DemangledSymbol>> &substitutions,
-    Vector<UniquePtr<DemangledSymbol>> &templates, bool &isSubstitution,
+    Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+    Vector<UniquePtr<DemangledSymbol>> &writeTemplates, bool &isSubstitution,
     Vector<UniquePtr<DemangledSymbol>> *currentTemplates) {
   isSubstitution = false;
   switch (*ptr) {
   case 'V': {
     ++ptr;
     bool useless;
-    auto inner = demangleType(ptr, substitutions, templates, useless);
+    auto inner = demangleType(ptr, substitutions, readTemplates, writeTemplates,
+                              useless);
     if (inner.failed())
       return inner;
     return new VolatileSymbol(move(*inner));
@@ -1632,7 +1811,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleType(
     return new BuiltinSymbol("int");
   }
   case 'I': {
-    return demangleTemplate(++ptr, substitutions, templates);
+    return demangleTemplate(++ptr, substitutions, readTemplates,
+                            writeTemplates);
   }
   case 'j': {
     ++ptr;
@@ -1684,11 +1864,12 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleType(
   }
   case 'P': {
     bool isSubstitution;
-    auto innerType =
-        demangleType(++ptr, substitutions, templates, isSubstitution);
+    auto innerType = demangleType(++ptr, substitutions, readTemplates,
+                                  writeTemplates, isSubstitution);
     if (innerType.failed())
       return innerType;
-    if (!isSubstitution && (*innerType)->t != DemangledSymbol::BUILTIN)
+    if (!isSubstitution && (*innerType)->t != DemangledSymbol::BUILTIN &&
+        (*innerType)->t != DemangledSymbol::STD)
       substitutions.pushBack((*innerType)->clone());
     auto &t = *innerType;
     if (t->t == DemangledSymbol::PTR) {
@@ -1697,64 +1878,65 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleType(
       return move(t);
     }
     auto *res = new PtrSymbol(move(*innerType));
-    // substitutions.pushBack(res->clone());
     return res;
   }
   case 'R': {
     bool isSubstitution;
-    auto innerType =
-        demangleType(++ptr, substitutions, templates, isSubstitution);
+    auto innerType = demangleType(++ptr, substitutions, readTemplates,
+                                  writeTemplates, isSubstitution);
     if (innerType.failed())
       return innerType;
-    if (!isSubstitution && (*innerType)->t != DemangledSymbol::BUILTIN)
+    if (!isSubstitution && (*innerType)->t != DemangledSymbol::BUILTIN &&
+        (*innerType)->t != DemangledSymbol::STD)
       substitutions.pushBack((*innerType)->clone());
     auto *res = new LvalSymbol(move(*innerType));
-    // substitutions.pushBack(res->clone());
     return res;
   }
   case 'O': {
     bool isSubstitution;
-    auto innerType =
-        demangleType(++ptr, substitutions, templates, isSubstitution);
+    auto innerType = demangleType(++ptr, substitutions, readTemplates,
+                                  writeTemplates, isSubstitution);
     if (innerType.failed())
       return innerType;
-    if (!isSubstitution && (*innerType)->t != DemangledSymbol::BUILTIN)
+    if (!isSubstitution && (*innerType)->t != DemangledSymbol::BUILTIN &&
+        (*innerType)->t != DemangledSymbol::STD)
       substitutions.pushBack((*innerType)->clone());
     auto *res = new RvalSymbol(move(*innerType));
-    // substitutions.pushBack(res->clone());
     return res;
   }
   case 'K': {
     bool isSubstitution;
-    auto innerType =
-        demangleType(++ptr, substitutions, templates, isSubstitution);
+    auto innerType = demangleType(++ptr, substitutions, readTemplates,
+                                  writeTemplates, isSubstitution);
     if (innerType.failed())
       return innerType;
-    if (!isSubstitution && (*innerType)->t != DemangledSymbol::BUILTIN)
+    if (!isSubstitution && (*innerType)->t != DemangledSymbol::BUILTIN &&
+        (*innerType)->t != DemangledSymbol::STD)
       substitutions.pushBack((*innerType)->clone());
     auto *res = new ConstSymbol(move(*innerType));
     return res;
   }
   case 'F': {
     bool isSubstitution;
-    auto returnType =
-        demangleType(++ptr, substitutions, templates, isSubstitution);
+    auto returnType = demangleType(++ptr, substitutions, readTemplates,
+                                   writeTemplates, isSubstitution);
     if (returnType.failed())
       return returnType;
-    if (!isSubstitution && (*returnType)->t != DemangledSymbol::BUILTIN)
+    if (!isSubstitution && (*returnType)->t != DemangledSymbol::BUILTIN &&
+        (*returnType)->t != DemangledSymbol::STD)
       substitutions.pushBack((*returnType)->clone());
     auto *resultType = new FunTypeSymbol(move(*returnType));
     while (*ptr != 'E') {
-      auto argType =
-          demangleType(ptr, substitutions, templates, isSubstitution);
+      auto argType = demangleType(ptr, substitutions, readTemplates,
+                                  writeTemplates, isSubstitution);
       if (argType.failed())
         return argType;
-      if (!isSubstitution && (*argType)->t != DemangledSymbol::BUILTIN)
+      if (!isSubstitution && (*argType)->t != DemangledSymbol::BUILTIN &&
+          (*argType)->t != DemangledSymbol::STD)
         substitutions.pushBack((*argType)->clone());
       resultType->addArgument(move(*argType));
     }
     ++ptr;
-    // substitutions.pushBack(resultType->clone());
     return resultType;
   }
   case '0':
@@ -1768,7 +1950,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleType(
   case '8':
   case '9': {
     bool useless;
-    auto nameResult = demangleName(ptr, substitutions, templates, useless);
+    auto nameResult = demangleName(ptr, substitutions, readTemplates,
+                                   writeTemplates, useless);
     if (nameResult.failed())
       return nameResult;
     auto res = move(*nameResult);
@@ -1782,7 +1965,8 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleType(
       if (!wasSubstitution)
         substitutions.pushBack(chain->clone());
       wasSubstitution = false;
-      auto inner = demangleType(ptr, substitutions, templates, wasSubstitution);
+      auto inner = demangleType(ptr, substitutions, readTemplates,
+                                writeTemplates, wasSubstitution);
       if (inner.failed()) {
         return inner;
       }
@@ -1795,15 +1979,19 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleType(
     ++ptr;
     if (*ptr == 't') {
       ++ptr;
+      isSubstitution = true;
       return new StdSymbol;
     } else {
       u64 index;
       parseSubstitutionIndex(index, ptr);
       assert(substitutions.length() > index);
+      // if (index == 8)
+      //   __builtin_debugtrap();
       auto entry = substitutions[index]->clone();
       if (entry->t == DemangledSymbol::MODULEBASE) {
         bool useless;
-        auto next = demangleType(ptr, substitutions, templates, useless);
+        auto next = demangleType(ptr, substitutions, readTemplates,
+                                 writeTemplates, useless);
         if (next.failed()) {
           return next;
         }
@@ -1830,14 +2018,14 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleType(
     default: {
       u64 size;
       parseSubstitutionIndex(size, ptr);
-      assert(templates.length() > size);
-      return templates[size]->clone();
+      auto *result = new TemplateArgumentSymbol(readTemplates, size);
+      return result;
     }
     }
   }
   case 'W': {
     ++ptr;
-    return demangleModule(ptr, substitutions, templates);
+    return demangleModule(ptr, substitutions, readTemplates, writeTemplates);
   }
   case 'D': {
     auto *savePtr = ptr;
@@ -1846,17 +2034,26 @@ LogicalResult<UniquePtr<DemangledSymbol>> demangleType(
     case 'p': {
       ++ptr;
       bool useless;
-      auto t = demangleType(ptr, substitutions, templates, useless);
-      if ((*t)->t != DemangledSymbol::TEMPLATE) {
+      auto t = demangleType(ptr, substitutions, readTemplates, writeTemplates,
+                            useless);
+      switch ((*t)->t) {
+      case DemangledSymbol::TEMPLATE: {
+        static_cast<TemplateSymbol *>(t->getRaw())->printLimits = false;
+        return t;
+      }
+      case DemangledSymbol::TEMPLATEARG: {
+        static_cast<TemplateArgumentSymbol *>(t->getRaw())->printLimits = false;
+        return t;
+      }
+      default: {
         return LogicalResult<UniquePtr<DemangledSymbol>>::failure(
             "Pack expension of something that is not a template pack.");
       }
-      static_cast<TemplateSymbol *>(t->getRaw())->printLimits = false;
-      return t;
+      }
     }
     case 'n': {
       ++ptr;
-      return new BuiltinSymbol("std::nullptr_t");
+      return new BuiltinSymbol("decltype(nullptr)");
     }
     default: {
       ptr = savePtr;
@@ -1892,8 +2089,8 @@ Pair<String, String> generateTypePrefixSuffix(UniquePtr<DemangledSymbol> type) {
                                   {"long long", "ll"},
                                   {"unsigned long long", "ull"}};
   switch (type->t) {
-  case DemangledSymbol::BASE: {
-    auto *t = static_cast<BaseSymbol *>(type.getRaw());
+  case DemangledSymbol::BUILTIN: {
+    auto *t = static_cast<BuiltinSymbol *>(type.getRaw());
     auto prefix = prefixes.contains(t->name) ? prefixes.get(t->name) : "";
     auto suffix = suffixes.contains(t->name) ? suffixes.get(t->name) : "";
     return Pair<String, String>(prefix, suffix);
@@ -1906,9 +2103,12 @@ Pair<String, String> generateTypePrefixSuffix(UniquePtr<DemangledSymbol> type) {
 LogicalResult<UniquePtr<DemangledSymbol>>
 demangleExprPrimary(const char *(&ptr),
                     Vector<UniquePtr<DemangledSymbol>> &substitutions,
-                    Vector<UniquePtr<DemangledSymbol>> &templates) {
+
+                    Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+                    Vector<UniquePtr<DemangledSymbol>> &writeTemplates) {
   bool useless;
-  auto t = demangleType(ptr, substitutions, templates, useless);
+  auto t =
+      demangleType(ptr, substitutions, readTemplates, writeTemplates, useless);
   if (t.failed())
     return t;
   bool neg = false;
@@ -1923,8 +2123,14 @@ demangleExprPrimary(const char *(&ptr),
   }
   assert(*ptr == 'E');
   ++ptr;
-  auto [prefix, suffix] = generateTypePrefixSuffix(move(*t));
-  String resultName = prefix + (neg ? "-" : "") + String::of(value) + suffix;
+  String resultName;
+  if (((*t)->t == DemangledSymbol::BUILTIN) &&
+      (static_cast<BuiltinSymbol *>((*t).getRaw())->name == "bool")) {
+    resultName = value ? "true" : "false";
+  } else {
+    auto [prefix, suffix] = generateTypePrefixSuffix(move(*t));
+    resultName = prefix + (neg ? "-" : "") + String::of(value) + suffix;
+  }
   return new BaseSymbol(resultName);
 }
 
@@ -1932,12 +2138,15 @@ template <bool isInRequire = false>
 LogicalResult<UniquePtr<DemangledSymbol>>
 demangleExpression(const char *(&ptr),
                    Vector<UniquePtr<DemangledSymbol>> &substitutions,
-                   Vector<UniquePtr<DemangledSymbol>> &templates) {
+
+                   Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+                   Vector<UniquePtr<DemangledSymbol>> &writeTemplates) {
   // TODO: expression
   switch (*ptr) {
   case 'L': {
     ++ptr;
-    return demangleExprPrimary(ptr, substitutions, templates);
+    return demangleExprPrimary(ptr, substitutions, readTemplates,
+                               writeTemplates);
   }
   default: {
     u64 size;
@@ -1953,7 +2162,8 @@ demangleExpression(const char *(&ptr),
     auto *n = new BaseSymbol(name);
     if (*ptr == 'I') {
       ++ptr;
-      auto t = demangleTemplate(ptr, substitutions, templates);
+      auto t =
+          demangleTemplate(ptr, substitutions, readTemplates, writeTemplates);
       if (t.failed()) {
         delete n;
         return t;
@@ -1971,24 +2181,29 @@ demangleExpression(const char *(&ptr),
 LogicalResult<UniquePtr<DemangledSymbol>>
 demangleTemplate(const char *(&ptr),
                  Vector<UniquePtr<DemangledSymbol>> &substitutions,
-                 Vector<UniquePtr<DemangledSymbol>> &templates) {
+
+                 Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+                 Vector<UniquePtr<DemangledSymbol>> &writeTemplates) {
   auto *res = new TemplateSymbol;
   while (*ptr != 'E') {
     switch (*ptr) {
     case 'L': {
-      auto expr = demangleExprPrimary(++ptr, substitutions, templates);
+      Vector<UniquePtr<DemangledSymbol>> innerTemplates;
+      auto expr = demangleExprPrimary(++ptr, substitutions, readTemplates,
+                                      innerTemplates);
       if (expr.failed()) {
         delete res;
         return expr;
       }
-      templates.pushBack((*expr)->clone());
+      writeTemplates.pushBack((*expr)->clone());
       res->addTemplate(move(*expr));
       break;
     }
     case 'J': {
       ++ptr;
       Vector<UniquePtr<DemangledSymbol>> innerTemplates;
-      auto pack = demangleTemplate(ptr, substitutions, innerTemplates);
+      auto pack =
+          demangleTemplate(ptr, substitutions, readTemplates, innerTemplates);
       if (pack.failed()) {
         delete res;
         return pack;
@@ -1997,13 +2212,15 @@ demangleTemplate(const char *(&ptr),
       for (auto &t : packTemplates->templates) {
         res->addTemplate(t->clone());
       }
-      templates.pushBack(move(*pack));
+      writeTemplates.pushBack(move(*pack));
       break;
     }
     case 'Q': {
       ++ptr;
       auto *rqs = new RequireSymbol;
-      auto expr = demangleExpression<true>(ptr, substitutions, templates);
+      Vector<UniquePtr<DemangledSymbol>> innerTemplates;
+      auto expr = demangleExpression<true>(ptr, substitutions, readTemplates,
+                                           innerTemplates);
       if (expr.failed()) {
         delete res;
         delete rqs;
@@ -2015,21 +2232,22 @@ demangleTemplate(const char *(&ptr),
     }
     default: {
       bool isSubstitution;
-      auto t = demangleType(ptr, substitutions, templates, isSubstitution,
-                            &res->templates);
+      Vector<UniquePtr<DemangledSymbol>> innerTemplates;
+      auto t = demangleType(ptr, substitutions, readTemplates, innerTemplates,
+                            isSubstitution, &res->templates);
       if (t.failed()) {
         delete res;
         return t;
       }
-      if (!isSubstitution && (*t)->t != DemangledSymbol::BUILTIN)
+      if (!isSubstitution && (*t)->t != DemangledSymbol::BUILTIN &&
+          (*t)->t != DemangledSymbol::STD)
         substitutions.pushBack((*t)->clone());
-      templates.pushBack((*t)->clone());
+      writeTemplates.pushBack((*t)->clone());
       res->addTemplate(move(*t));
       break;
     }
     }
   }
-  // substitutions.pushBack(res->clone());
   ++ptr;
   return res;
 }
@@ -2037,12 +2255,14 @@ demangleTemplate(const char *(&ptr),
 template <bool END_ON_E = false>
 LogicalResult<UniquePtr<DemangledSymbol>>
 demangle(const char *(&ptr), Vector<UniquePtr<DemangledSymbol>> &substitutions,
-         Vector<UniquePtr<DemangledSymbol>> &templates) {
+
+         Vector<UniquePtr<DemangledSymbol>> &readTemplates,
+         Vector<UniquePtr<DemangledSymbol>> &writeTemplates) {
   UniquePtr<DemangledSymbol> name;
   bool isConst = false;
   if (*ptr == 'N') {
     auto demangleNestedNameResult =
-        demangleNestedName(++ptr, substitutions, templates);
+        demangleNestedName(++ptr, substitutions, readTemplates, writeTemplates);
     if (demangleNestedNameResult.failed())
       return demangleNestedNameResult;
     name = move(*demangleNestedNameResult);
@@ -2052,19 +2272,18 @@ demangle(const char *(&ptr), Vector<UniquePtr<DemangledSymbol>> &substitutions,
       ++ptr;
     }
     if (*ptr == 'W') {
-      auto mod = demangleModule(++ptr, substitutions, templates);
+      auto mod =
+          demangleModule(++ptr, substitutions, readTemplates, writeTemplates);
       if (mod.failed())
         return mod;
       substitutions.pushBack((*mod)->clone());
       name = move(*mod);
     } else {
       bool isSubstitution = false;
-      auto demangledName =
-          demangleName(ptr, substitutions, templates, isSubstitution);
+      auto demangledName = demangleName(ptr, substitutions, readTemplates,
+                                        writeTemplates, isSubstitution);
       if (demangledName.failed())
         return demangledName;
-      if (!isSubstitution)
-        substitutions.pushBack((*demangledName)->clone());
       name = move(*demangledName);
     }
   }
@@ -2073,7 +2292,8 @@ demangle(const char *(&ptr), Vector<UniquePtr<DemangledSymbol>> &substitutions,
   if (*ptr == 0)
     return result;
   if (*ptr == 'I') {
-    auto tmplts = demangleTemplate(++ptr, substitutions, templates);
+    auto tmplts =
+        demangleTemplate(++ptr, substitutions, readTemplates, writeTemplates);
     if (tmplts.failed()) {
       return tmplts;
     }
@@ -2082,13 +2302,16 @@ demangle(const char *(&ptr), Vector<UniquePtr<DemangledSymbol>> &substitutions,
   }
   if (*ptr == 0)
     return result;
-  if (result->hasTemplate() && !result->isConstructor()) {
+  if (result->hasTemplate() && !result->isConstructor() &&
+      !result->isOperator()) {
     bool isSubstitution;
-    auto retType = demangleType(ptr, substitutions, templates, isSubstitution);
+    auto retType = demangleType(ptr, substitutions, readTemplates,
+                                writeTemplates, isSubstitution);
     if (retType.failed()) {
       return retType;
     }
-    if (!isSubstitution && (*retType)->t != DemangledSymbol::BUILTIN)
+    if (!isSubstitution && (*retType)->t != DemangledSymbol::BUILTIN &&
+        (*retType)->t != DemangledSymbol::STD)
       substitutions.pushBack((*retType)->clone());
     result->hasReturnType = true;
     result->returnType = move(*retType);
@@ -2106,13 +2329,44 @@ demangle(const char *(&ptr), Vector<UniquePtr<DemangledSymbol>> &substitutions,
         return result;
     }
     bool isSubstitution;
-    auto type = demangleType(ptr, substitutions, templates, isSubstitution);
+    auto type = demangleType(ptr, substitutions, readTemplates, writeTemplates,
+                             isSubstitution);
     if (type.failed()) {
       return type;
     }
-    if (!isSubstitution && (*type)->t != DemangledSymbol::BUILTIN)
-      substitutions.pushBack((*type)->clone());
-    result->types.pushBack(move(*type));
+    auto t = move(*type);
+    if (t->t == DemangledSymbol::STD) {
+      auto innerType = demangleType(ptr, substitutions, readTemplates,
+                                    writeTemplates, isSubstitution);
+      if (innerType.failed()) {
+        return innerType;
+      }
+      auto chain = new ChainSymbol;
+      chain->addPart(move(t));
+      chain->addPart(move(*innerType));
+      t = chain;
+    }
+    while (*ptr == 'I') {
+      ++ptr;
+      Vector<UniquePtr<DemangledSymbol>> innerTemplates;
+      auto tmpl =
+          demangleTemplate(ptr, substitutions, readTemplates, innerTemplates);
+      if (tmpl.failed())
+        return tmpl;
+      if (t->t == DemangledSymbol::CHAIN) {
+        static_cast<ChainSymbol *>(t.getRaw())->addPart(move(*tmpl));
+      } else {
+        auto *chain = new ChainSymbol;
+        chain->addPart(move(t));
+        chain->addPart(move(*tmpl));
+        t = chain;
+      }
+    }
+
+    if (!isSubstitution && t->t != DemangledSymbol::BUILTIN)
+      substitutions.pushBack(t->clone());
+
+    result->types.pushBack(move(t));
   }
   return result;
 }
@@ -2125,7 +2379,7 @@ export LogicalResult<String> demangle(String name) {
 
   Vector<UniquePtr<DemangledSymbol>> substitutions, templates;
   auto *ptr = name.ptr() + 2;
-  auto demangleResult = demangle(ptr, substitutions, templates);
+  auto demangleResult = demangle(ptr, substitutions, templates, templates);
   if (demangleResult.failed())
     return demangleResult;
 
