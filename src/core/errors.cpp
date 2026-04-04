@@ -22,8 +22,11 @@ namespace core {
 
 //! @cond INTERNAL
 
-[[noreturn, clang::always_inline]] void doFail(const core::String message) {
+[[noreturn, clang::always_inline]] void doFail(const char *message) {
   serr << "Assertion failed.\n" << message << "\n";
+#if not defined(NDEBUG) and __has_builtin(__builtin_debugtrap)
+  __builtin_debugtrap();
+#endif
   exit(1);
 }
 
@@ -31,7 +34,7 @@ namespace core {
 
 export void assert(bool cond, const core::String message) {
   if (!cond) {
-    doFail(message);
+    doFail(message.ptr());
   }
 }
 
