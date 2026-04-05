@@ -1,9 +1,5 @@
 cmake_minimum_required(VERSION 4.3.0)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-
 option(ENABLE_THREADS "Enable multithreading for the build" ON)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -62,15 +58,18 @@ cmake_host_system_information(RESULT totalRam
   QUERY AVAILABLE_VIRTUAL_MEMORY
 )
 
-project(Cidmol LANGUAGES CXX ASM)
+project(CppCore LANGUAGES CXX ASM)
 
+message("STANDALONE")
 include(CTest)
 enable_testing()
 set(TEST_TARGETS "")
 
+include_directories(${PROJECT_SOURCE_DIR}/src)
+
 if(DOXYGEN_FOUND)
-  set(DOXYFILE_IN ${CMAKE_SOURCE_DIR}/Doxyfile.in)
-  set(DOXYFILE_GEN ${CMAKE_BINARY_DIR}/Doxyfile)
+  set(DOXYFILE_IN ${PROJECT_SOURCE_DIR}/Doxyfile.in)
+  set(DOXYFILE_GEN ${CMAKE_BINARY_DIR}/CppCore/Doxyfile)
 
   set(DOXYGEN_PREDEFINED "__linux__ __x86_64__")
 
@@ -180,4 +179,5 @@ add_test(NAME buildTests
 )
 
 set_tests_properties(buildTests PROPERTIES FIXTURES_SETUP build)
-add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure)
+
+add_custom_target(check-cppCore COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure)
