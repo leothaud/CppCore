@@ -60,7 +60,6 @@ cmake_host_system_information(RESULT totalRam
 
 project(CppCore LANGUAGES CXX ASM)
 
-message("STANDALONE")
 include(CTest)
 enable_testing()
 set(TEST_TARGETS "")
