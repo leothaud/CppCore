@@ -8,6 +8,10 @@ endif()
 
 project(CppCore LANGUAGES CXX ASM)
 
+if(PROJECT_IS_TOP_LEVEL)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CppCoreFlags}")
+endif()
+
 include(CTest)
 enable_testing()
 set(TEST_TARGETS "")
