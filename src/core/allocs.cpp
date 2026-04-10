@@ -20,16 +20,40 @@ import :mutex;
 
 namespace core {
 
+export u64 getPageSize();
+
+u64 alignDown(void *ptr, u64 al) {
+  u64 uptr = reinterpret_cast<u64>(ptr);
+#if __has_builtin(__builtin_align_down)
+  return __builtin_align_down(uptr, al);
+#else
+  if (isPowerOfTwo(al)) {
+    return uptr & ~(al - 1);
+  }
+  return uptr - (ptr % al);
+#endif
+}
+
+u64 alignUp(void *ptr, u64 al) {
+  u64 uptr = reinterpret_cast<u64>(ptr);
+#if __has_builtin(__builtin_align_up)
+  return __builtin_align_up(uptr, al);
+#else
+  if (isPowerOfTwo(al)) {
+    return (uptr + (al - 1)) & ~(al - 1);
+  }
+  return (uptr + al - 1) / al * al;
+#endif
+}
+
 //! @cond INTERNAL
 export void assert(bool cond, const char *message);
 //! @endcond
 
+static constexpr u64 _128go = 128llu * 1024llu * 1024llu * 1024llu;
+
 //! Thread-safe list allocator.
-export template <u64 allocaSize =
-                     ((__CORE_RAM_SIZE > 1024) ? (__CORE_RAM_SIZE - 1024)
-                                               : __CORE_RAM_SIZE) *
-                     1024lu,
-                 u64 splitDelta = 1024>
+export template <u64 allocaSize = _128go, u64 splitDelta = 1024>
 struct Allocator {
 
 #ifdef CORE_THREAD
@@ -54,10 +78,9 @@ struct Allocator {
   Allocator &operator=(const Allocator &) = delete;
 
   Allocator() {
-    front = reinterpret_cast<Header *>(
-        syscall<MMAP>(0, allocaSize, PROT_READ | PROT_WRITE,
-                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
-
+    front = reinterpret_cast<Header *>(syscall<MMAP>(
+        0, allocaSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+    mprotect(front, getPageSize(), PROT_READ | PROT_WRITE);
     front->next = front->prev = nullptr;
     front->size = allocaSize - offset;
   }
@@ -78,6 +101,12 @@ struct Allocator {
     char *mem = reinterpret_cast<char *>(block);
     char *next = mem + offset + size;
     Header *newBlock = reinterpret_cast<Header *>(next);
+    u64 startPage = alignDown(newBlock, getPageSize());
+    u64 endPage = alignUp(
+        reinterpret_cast<void *>(reinterpret_cast<u64>(newBlock) + offset),
+        getPageSize());
+    mprotect(reinterpret_cast<void *>(startPage), endPage - startPage,
+             PROT_WRITE | PROT_READ);
     newBlock->prev = block;
     newBlock->next = block->next;
     block->next = newBlock;
@@ -88,6 +117,7 @@ struct Allocator {
   }
 
   void merge(Header *block) {
+    Header *toUnalloc = block;
     if (block->next == block->getNext()) {
       block->size = block->size + offset + block->next->size;
       block->next = block->next->next;
@@ -95,10 +125,22 @@ struct Allocator {
         block->next->prev = block;
     }
     if (block->prev && (block->prev->getNext() == block)) {
+      toUnalloc = block->prev;
       block->prev->size = block->prev->size + offset + block->size;
       block->prev->next = block->next;
       if (block->next)
         block->next->prev = block->prev;
+    }
+    u64 startPage =
+        alignUp(reinterpret_cast<char *>(toUnalloc) + offset, getPageSize());
+    u64 endPage = alignDown(reinterpret_cast<char *>(toUnalloc) + offset +
+                                toUnalloc->size,
+                            getPageSize());
+    if (startPage < endPage) {
+      mprotect(reinterpret_cast<void *>(startPage), endPage - startPage,
+               PROT_NONE);
+      madvise(reinterpret_cast<void *>(startPage), endPage - startPage,
+              MADV_FREE);
     }
   }
 
@@ -125,6 +167,14 @@ struct Allocator {
       front = block->next;
     }
     char *mem = reinterpret_cast<char *>(block);
+
+    u64 startPage = alignDown(block, getPageSize());
+    u64 endPage =
+        alignUp(reinterpret_cast<void *>(reinterpret_cast<char *>(block) +
+                                         offset + block->size),
+                getPageSize());
+    mprotect(reinterpret_cast<void *>(startPage), endPage - startPage,
+             PROT_READ | PROT_WRITE);
 
 #ifdef CORE_THREAD
     mutex.release();

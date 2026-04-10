@@ -191,6 +191,10 @@ export TlsHeader *allocateTls() {
 extern "C" export [[gnu::no_stack_protector]] int init(int, char **, char **,
                                                        Elf32Auxv *) asm("init");
 
+u64 pageSize = 4096;
+
+export u64 getPageSize() { return pageSize; }
+
 extern "C" export [[gnu::no_stack_protector]] int
 init(int argc, char **argv, char **envp, Elf32Auxv *auxv) {
 
@@ -198,6 +202,9 @@ init(int argc, char **argv, char **envp, Elf32Auxv *auxv) {
   while (auxv->aType != AT_NULL) {
     if (auxv->aType < 33) {
       auxvVals[auxv->aType] = auxv->aUn;
+      if (auxv->aType == AT_PAGESZ) {
+        pageSize = auxv->aUn.aVal;
+      }
     }
     ++auxv;
   }

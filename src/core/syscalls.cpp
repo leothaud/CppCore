@@ -38,6 +38,36 @@ export enum MmapFlags {
   MAP_ANONYMOUS = 0x20
 };
 
+export enum Madvices {
+  MADV_NORMAL = 0,
+  MADV_RANDOM = 1,
+  MADV_SEQUENTIAL = 2,
+  MADV_WILLNEED = 3,
+  MADV_DONTNEED = 4,
+  MADV_FREE = 8,
+  MADV_REMOVE = 9,
+  MADV_DONTFORK = 10,
+  MADV_DOFORK = 11,
+  MADV_HWPOISON = 100,
+  MADV_SOFT_OFFLINE = 101,
+  MADV_MERGEABLE = 12,
+  MADV_UNMERGEABLE = 13,
+  MADV_HUGEPAGE = 14,
+  MADV_NOHUGEPAGE = 15,
+  MADV_DONTDUMP = 16,
+  MADV_DODUMP = 17,
+  MADV_WIPEONFORK = 18,
+  MADV_KEEPONFORK = 19,
+  MADV_COLD = 20,
+  MADV_PAGEOUT = 21,
+  MADV_POPULATE_READ = 22,
+  MADV_POPULATE_WRITE = 23,
+  MADV_DONTNEED_LOCKED = 24,
+  MADV_COLLAPSE = 25,
+  MADV_GUARD_INSTALL = 102,
+  MADV_GUARD_REMOVE = 103,
+};
+
 export enum FileProtection {
   O_RDONLY = 0,
   O_WRONLY = 1,
@@ -567,6 +597,14 @@ export [[gnu::malloc]] void *mmap(u64 size, u64 protection, u64 flags) {
 
 export void munmap(void *ptr, u64 size) {
   syscall<MUNMAP>(reinterpret_cast<u64>(ptr), size);
+}
+
+export int mprotect(void *ptr, u64 size, u64 protection) {
+  return syscall<MPROTECT>(reinterpret_cast<u64>(ptr), size, protection);
+}
+
+export int madvise(void *ptr, u64 size, i64 advice) {
+  return syscall<MADVISE>(reinterpret_cast<u64>(ptr), size, advice);
 }
 
 export void write(int fd, const char *buffer, u32 size) {
